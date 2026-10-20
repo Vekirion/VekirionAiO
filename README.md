@@ -54,7 +54,7 @@ Limity towarzyszy ustawiasz w `docker/.env`: `M2_SIDEKICK_MAX_ACTIVE=2` (1–6),
 
 ## Instalacja
 
-Pobierz paczkę (z [Releases](../../releases) albo `git clone` i rozpakuj folder `Vekirion_AiO_2.1`.
+Pobierz paczkę z [Releases](../../releases) albo `git clone` i rozpakuj folder `Vekirion_AiO_2.1`.
 
 ### Windows – wybrane mody (zalecane)
 
@@ -92,7 +92,8 @@ zostaje usunięty. **Po każdym użyciu `MT2009-Patcher.exe` uruchom instalator 
    ```
    Potem w panelu (edytor bazy) przy 76009: nazwa i opis, stackowanie włączone, blokada stacku zdjęta (te zmiany trzeba wprowadzić ręcznie).
    Query na dodanie stackowania i zdjęta blokada stacku:
-   ```UPDATE world.item_proto
+   ```sql
+   UPDATE world.item_proto
     SET flag = flag | 4,              -- ITEM_FLAG_STACKABLE
         antiflag = antiflag & ~32768, -- zdjęta ITEM_ANTIFLAG_STACK
         stack = GREATEST(stack, 200)  -- ile sztuk w jednym polu
