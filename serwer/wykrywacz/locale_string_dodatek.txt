@@ -1,0 +1,2 @@
+"The detector was activated, but no bosses were detected.";
+"Wykrywacz zosta³ uruchomiony, ale nie wykryto ¿adnych bossów.";

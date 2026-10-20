@@ -1,0 +1,111 @@
+﻿CO JEST W PACZCE
+----------------
+01. FPS 60/120/144/240 – Opcje Gry > System > FPS (działa po łatce exe: Ustaw_FPS.bat).
+02. Ruch bez zatrzymywania – po buffie, wsiadaniu na konia/mounta, po ciosie; też przy LPM.
+    v2 (16.10): klawisz jest puszczany i wciskany ponownie (dawniej samo „wciśnij” exe często
+    ignorował), a do tego: trzymany klawisz ruchu, a postać stoi 0,35 s – ruch jest wznawiany,
+    cokolwiek ją zatrzymało.
+    v3 (16.10): działa też po edycji sklepu. Okna sklepu zostawiały włączoną flagę „gracz pisze”
+    (ime.IsCaptureInput) bez żadnego pola do pisania – poprawka czekała na koniec pisania.
+    Teraz liczy się, czy wciśnięcie klawisza ruchu trafiło do gry.
+03. Autołowy bez skakania między celami przy ścianach.
+06. Ctrl+PPM otwiera też karty/skrzynki 50283, 50284, 79604, 79506, 79508.
+11. Wykrywacz Bossów (przedmiot 76009) i zmiany wykrywacza metinów
+    v2 (16.10): znacznik metina/bossa widać na mapie i minimapie w całej mapie, nie tylko
+    w zasięgu widzenia (serwer: target.cpp – znacznik wysyłany jako miejsce, serwer dalej
+    śledzi cel i usuwa znacznik, gdy cel zginie).
+12. Wykrywacz (metinów i bossów) sam otwiera mapę – do wyłączenia w Opcje Gry > Dodatkowe.
+13. Wyraźniejszy znacznik celu na minimapie i mapie (dotyczy też celów z questów).
+14. Mgła na mapach (poprawka msenv).
+18. Depozyt i stakowanie (Dom Aukcyjny / sklepy offline): kupione przedmioty dokładają się do
+    stosów w ekwipunku; w oknie własnego sklepu przycisk „Depozyt (N)” – jedno kliknięcie
+    przenosi depozyt do ekwipunku. Serwer: ikarus_shop_manager.cpp, auction_house.cpp,
+    input_main.cpp (włączona obsługa pakietu depozytu – brak powodował „lag” i nic nie wydawał).
+19. Przenoszenie i dzielenie stosów w ekwipunku przy otwartym cudzym sklepie, Domu Aukcyjnym
+    i sklepie NPC (serwer, char_item.cpp). Zakładanie/zdejmowanie nadal zablokowane.
+22. Duża mapa (M) w Czerwonym Lesie: klient blokował ją tam wszystkim poza GM-em (uiminimap.py).
+23. Drop bez limitu poziomu (serwer, item_manager.cpp; tylko gracze, boty bez zmian): zwykły drop
+    nie spada z różnicą poziomów, gwarantowana księga i Zwój Błogosławieństwa z metina,
+    Cor Draconis i szarfy bez limitu 15 poziomów. Doświadczenie i yang bez zmian.
+25. Puste kwadraty na końcu napisów pod Protonem / Wine (Steam Deck): pliki tekstów miały windowsowe
+    końce linii i w tekstach zostawał znak \r (localeinfo.py, uiscriptlocale.py).
+26. Towarzysz – przebudowa: szybsze dołączanie
+    po logowaniu i zmianie CH, Shift+P plecak, Ctrl+P efekty towarzysza, Alt+P drużyna i ławka,
+    kilku towarzyszy naraz (M2_SIDEKICK_MAX_ACTIVE=2, M2_SIDEKICK_ROSTER=4), portrety nad oknem P.
+    Klient: game.py, keybind.py, sidekickcollision.py, uisidekick.py + nowe uisidekickaffects.py,
+    uisidekickroster.py. Serwer: input_login.cpp, playerbot_manager.cpp, playerbot_sidekick.h
+    (+ kopie w overlays\playerbot\src\game\src), quest towarzysz.quest, docker-compose.yml,
+    .env.example, mariadb\playerbot\apply.sh.
+    Klient i serwer muszą mieć 26 oba albo żaden.
+    21.10: poprawione uisidekickaffects.py i uisidekickroster.py
+27. Bez kontroli speedhacka: input_main.cpp – bez cofania przy
+    rozjeździe pozycji, bez „trying to move too far”/SYNC_HACK, bez kontroli szybkości ruchu co 1,5 s,
+    zegara klienta i tempa combo (przełącznik #define MT2009_PLUS_NO_SPEEDHACK_CHECK); battle.cpp –
+    IS_SPEED_HACK() zawsze false. Chodzenie przez ściany dalej zablokowane.
+28. Zwoje powrotu, biała flaga, karty (serwer, char_item.cpp; Twój mod scroll_whiteflag_cooldown...):
+    zwoje z zapisaną pozycją (22001, 22010…) – odczekanie 5 min zamiast 15; Biała Flaga (70008) bez
+    blokady 3 min; karty potworów 50283 i 50284 liczone jak skrzynki (do 60 użyć na 500 ms – szybkie
+    otwieranie Ctrl+PPM z modu 06).
+29. Ulepszanie co 0,2 s zamiast co 1 s – podwójne kliknięcie dalej nie ulepsza dwa razy.
+
+KLIENT 
+------
+Zamknij grę i patcher. Zrób kopię folderu pack.
+  Sposób A (ręcznie): przeciągnij klient\pack na folder pack klienta i zgódź się na podmianę.
+                      Potem klient\Ustaw_FPS.bat do folderu klienta, uruchom i wpisz 1.
+  Sposób B (instalator): Zainstaluj_klient.bat – kopia zapasowa, root, gamedata i etc (tylko
+                      gdy Twoje są w znanej wersji), łatka FPS.
+W klient\pack:
+  root.index/.data      – root klienta 2.0.66 + mody 01, 02, 03, 06, 11, 12, 18, 22, 25, 26
+  gamedata.index/.data  – ikona Wykrywacza Bossów (gamedata 2.0.66 + ikona; taki sam jak w 2.0.65)
+  etc.index/.data       – mgła + nowy znacznik (etc 2.0.66 + te zmiany; taki sam jak w 2.0.65)
+klient\root\*.py – te same pliki luzem, dla klienta z ROZPAKOWANYM rootem (pack\root);
+  instalator wgrywa je sam.
+
+SPOSÓB C – WYBIERZ_MODY.BAT (instalacja tylko wybranych modów)
+--------------------------------------------------------------
+Wybierz_mody.bat pyta: klient / serwer / oba, potem pokazuje listę modów z [x]. Wpisujesz numery,
+żeby włączyć/wyłączyć (np. „03 22”), A = wszystkie, N = żaden, Enter = instaluj.
+Mody, które dzielą plik (np. game.py: 01, 02, 12, 26; char_item.cpp: 11, 12, 19, 28), łączy sam – każde połączenie jest
+gotowe w paczce (game.py ma 15 wariantów). Wyłączenie moda przy kolejnym uruchomieniu cofa go.
+  Klient: pack\root.index składa na nowo z czystego 2.0.66 i wybranych modów; root.data z paczki ma
+    w sobie każdy wariant każdego pliku, a gra czyta tylko to, na co
+    wskazuje indeks. Tak samo etc (13, 14). gamedata (ikona 76009) – jak dotąd, gdy wybrano 11.
+    Sprawdza: wersję klienta (CLIENT_VERSION 2.0.66), czy root/etc są w znanej wersji (inaczej pyta),
+    czy wszystkie 3 części zip są rozpakowane. Łatka FPS: z 01 włącza, bez 01 (gdy było) wyłącza.
+    Wybór zapisuje w <klient>\mt2009_mody.txt – następnym razem lista startuje od niego.
+  Serwer: pliki z wybranymi modami albo czyste (2.35.0 / Twój cube.cpp / sprzed przebudowy
+    towarzysza). Plik, którego nie rozpoznaje (Twoje własne zmiany), nadpisuje tylko po pytaniu.
+    Dopisuje locale_string (11), pyta o SQL 76009 i o przebudowanie.
+  Wszystko, co podmienia, idzie najpierw do <folder>\backup_mody_<data>\.
+  Jak działa: Wybierz_mody.bat uruchamia instalator\Instalator.cs przez PowerShell (Add-Type kompiluje
+    go w pamięci kompilatorem C# z .NET Framework) – bez pliku .exe, który Windows 11 (Smart App
+    Control) blokował komunikatem „This app can't run on your PC”.
+  UWAGA: nie mogłem go uruchomić na Windowsie – składanie indeksu sprawdziłem tylko tym samym
+    algorytmem w Pythonie (37 zestawów modów, dekodowanie przez liblzo2 i rozpakowanie packa).
+    Przy pierwszym użyciu zrób kopię folderu pack i sprawdź grę; w razie błędu przywróć z backup_mody_*.
+
+SERWER (MT2009-PLUS-Serwer-2.12.0)
+------
+  Sposób A (ręcznie):
+    1. Przeciągnij serwer\linux-port na folder linux-port serwera. Podmienia w game\src:
+       char_item.cpp (11, 12, 19, 28), target.cpp (11), ikarus_shop_manager.cpp, auction_house.cpp (18),
+       input_main.cpp (18, 27, 29), battle.cpp (27), item_manager.cpp (23).
+       26: input_login.cpp, playerbot_manager.cpp, playerbot_sidekick.h (też w overlays\playerbot\src\game\src),
+       game\quest\towarzysz.quest, docker-compose.yml, .env.example, mariadb\playerbot\apply.sh
+    2. Do docker\game\src\serverfiles\share\locale\poland\locale_string.txt dopisz na końcu
+       2 linie z serwer\wykrywacz\locale_string_dodatek.txt (w 2.12.0 ich nie ma).
+    3. Przedmiot 76009 – raz: serwer\wykrywacz\wykrywacz_bossow.sql do bazy (INSERT IGNORE –
+       jeśli 76009 już jest w Twojej bazie, nic nie zmieni), potem w panelu (edytor bazy) przy
+       76009: nazwa i opis wykrywacza, stackowanie włączone, blokada stacku zdjęta – jak poprzednio.
+       Polecenia (w folderze linux-port\docker, po skopiowaniu tam pliku .sql):
+         docker cp wykrywacz_bossow.sql metin2-db:/tmp/w.sql
+         docker exec metin2-db sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" < /tmp/w.sql'
+    4. docker compose up -d --build
+  Sposób B (instalator): Zainstaluj_serwer.bat – pyta o folder linux-port, kopia zapasowa,
+    kopiuje pliki, dopisuje locale_string, pyta o SQL
+    i przebudowanie. Pytanie o dane
+    klienta panelu (m2clientpack) – odpowiedz N.
+
+Uwaga: w 2.12.0 boty (playerbot_types.h) traktują vnum 76009 jako „Zwój Boga Smoków” (nie
+wyrzucają go i nie sprzedają). Wykrywaczowi to nie przeszkadza.

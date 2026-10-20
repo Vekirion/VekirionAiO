@@ -1,0 +1,36 @@
+{
+ "client": "2.0.61",
+ "files": {
+  "gamedata/item_extra_apply.txt": {
+   "ctype": 2,
+   "sha256": "CBD5339A0C21EC97396792B0993C0A50640532D075B8F77A9105F1C7C96039C8",
+   "size": 185
+  },
+  "gamedata/item_proto": {
+   "ctype": 0,
+   "sha256": "F4368674169BD8DE0CE7772883444CA86ADA880362E1825C4BA6116E9A308B3A",
+   "size": 266452
+  },
+  "gamedata/skilltable.txt": {
+   "ctype": 2,
+   "sha256": "8F3A154EADE98805EEC26196E8B6262E6ADDB1921AECB3328AD29B3552E592E1",
+   "size": 12944
+  },
+  "locale/pl/itemdesc.txt": {
+   "ctype": 2,
+   "sha256": "B8F3C884C1AC28EDB49DF11C3C017AB1DEEC452D50BB70842F20C3843B3C5AD0",
+   "size": 475761
+  },
+  "locale/pl/skilldesc.txt": {
+   "ctype": 2,
+   "sha256": "F94551D95001C3DB541930EA1E7AC611EB22E926B1AFCDCD32BE24FCEC1CF3EE",
+   "size": 22403
+  }
+ },
+ "pack": {
+  "dataSha256": "B1E65CC5A629C4FC5441F495F7F0191551BC070995B13B096DB484043EA7A374",
+  "dataSize": 393472,
+  "indexSha256": "A8EDF9E8C6F98F50E5060DD6231E7AE08D6B5536A3CEDBC8FAC0CDEEBEA69BA7",
+  "indexSize": 292
+ }
+}
