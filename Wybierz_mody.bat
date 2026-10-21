@@ -7,7 +7,7 @@ rem zadnego pliku .exe (taki plik Windows potrafi zablokowac: "This app can't ru
 set "M2_PKG=%~dp0"
 set "M2_CS=%~dp0instalator\Instalator.cs"
 if not exist "%M2_CS%" (
-	echo Brak instalator\Instalator.cs - uruchom ten plik z rozpakowanej paczki MT2009_Gotowe.
+	echo Brak instalator\Instalator.cs - uruchom ten plik z rozpakowanej paczki Vekirion AiO.
 	set "M2_RC=1"
 	goto koniec
 )

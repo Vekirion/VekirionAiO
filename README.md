@@ -1,12 +1,12 @@
-# Vekirion AiO 2.1 – paczka modów do MT2009 PLUS
+# Vekirion AiO 2.1.1 – paczka modów do MT2009 PLUS
 
 Zestaw modów klienta i serwera do **MT2009 PLUS** (singleplayer Metin2 z botami), z instalatorem,
 w którym wybierasz, które mody wgrać.
 
 | | Wersja |
 |---|---|
-| Klient | MT2009 PLUS **2.0.66** |
-| Serwer | MT2009-PLUS-Serwer-2.12.0, **VERSION 2.35.0** (linux-port, Docker) |
+| Klient | MT2009 PLUS **2.0.67** |
+| Serwer | MT2009-PLUS-Serwer-2.12.0, **VERSION 2.36.0** (linux-port, Docker) |
 | Licencja | [CC BY-NC-SA 4.0](LICENSE) |
 
 > **Uwaga:** przed instalacją zrób kopię folderu `pack` klienta i folderu `linux-port` serwera.
@@ -54,7 +54,7 @@ Limity towarzyszy ustawiasz w `docker/.env`: `M2_SIDEKICK_MAX_ACTIVE=2` (1–6),
 
 ## Instalacja
 
-Pobierz paczkę z [Releases](../../releases) albo `git clone` i rozpakuj folder `Vekirion_AiO_2.1`.
+Pobierz paczkę z [Releases](../../releases) albo `git clone` i rozpakuj folder `Vekirion_AiO_2.1.1`.
 
 ### Windows – wybrane mody (zalecane)
 
@@ -114,7 +114,7 @@ Ręczne kopiowanie wgrywa **wszystkie** mody serwera. Żeby wybrać tylko niekt�
 - **Klient:** pliki `.py` gry są w `pack/root` – `root.data` (zawartość) i `root.index` (spis, co
   gdzie leży). `klient/pack/root.data` z paczki zawiera każde połączenie modów każdego zmienionego
   pliku (np. `game.py` ma 15 wariantów). Instalator składa nowy `root.index` z czystego indeksu
-  2.0.66 (`instalator/root.base`) i wpisów wybranych wariantów (`instalator/root.var`), po czym
+  2.0.67 (`instalator/root.base`) i wpisów wybranych wariantów (`instalator/root.var`), po czym
   pakuje go i szyfruje jak oryginał. Gra czyta tylko to, na co wskazuje indeks. Tak samo
   `pack/etc` (mody 13, 14); `pack/gamedata` (ikona 76009) jest kopiowany przy modzie 11.
 - **Serwer:** dla każdego pliku źródłowego wybiera wersję z wybranymi modami albo czystą
@@ -128,7 +128,7 @@ Ręczne kopiowanie wgrywa **wszystkie** mody serwera. Żeby wybrać tylko niekt�
 ## Struktura
 
 ```
-Vekirion_AiO_2.1/
+Vekirion_AiO_2.1.1/
   Wybierz_mody.bat        instalator z wyborem modów (Windows)
   CZYTAJ.txt              opis modów i instalacji
   klient/

@@ -1,4 +1,7 @@
-﻿CO JEST W PACZCE
+﻿WERSJA: klient MT2009 PLUS 2.0.67, serwer MT2009-PLUS-Serwer-2.12.0 VERSION 2.36.0 (21.10.2026).
+Na starszym kliencie 2.0.66 / serwerze 2.35.0 użyj poprzedniej wersji paczki.
+
+CO JEST W PACZCE
 ----------------
 01. FPS 60/120/144/240 – Opcje Gry > System > FPS (działa po łatce exe: Ustaw_FPS.bat).
 02. Ruch bez zatrzymywania – po buffie, wsiadaniu na konia/mounta, po ciosie; też przy LPM.
@@ -56,9 +59,9 @@ Zamknij grę i patcher. Zrób kopię folderu pack.
   Sposób B (instalator): Zainstaluj_klient.bat – kopia zapasowa, root, gamedata i etc (tylko
                       gdy Twoje są w znanej wersji), łatka FPS.
 W klient\pack:
-  root.index/.data      – root klienta 2.0.66 + mody 01, 02, 03, 06, 11, 12, 18, 22, 25, 26
-  gamedata.index/.data  – ikona Wykrywacza Bossów (gamedata 2.0.66 + ikona; taki sam jak w 2.0.65)
-  etc.index/.data       – mgła + nowy znacznik (etc 2.0.66 + te zmiany; taki sam jak w 2.0.65)
+  root.index/.data      – root klienta 2.0.67 + mody 01, 02, 03, 06, 11, 12, 18, 22, 25, 26
+  gamedata.index/.data  – ikona Wykrywacza Bossów (gamedata 2.0.66/2.0.67 + ikona; taki sam jak w 2.0.65)
+  etc.index/.data       – mgła + nowy znacznik (etc 2.0.66/2.0.67 + te zmiany; taki sam jak w 2.0.65)
 klient\root\*.py – te same pliki luzem, dla klienta z ROZPAKOWANYM rootem (pack\root);
   instalator wgrywa je sam.
 
@@ -68,13 +71,13 @@ Wybierz_mody.bat pyta: klient / serwer / oba, potem pokazuje listę modów z [x]
 żeby włączyć/wyłączyć (np. „03 22”), A = wszystkie, N = żaden, Enter = instaluj.
 Mody, które dzielą plik (np. game.py: 01, 02, 12, 26; char_item.cpp: 11, 12, 19, 28), łączy sam – każde połączenie jest
 gotowe w paczce (game.py ma 15 wariantów). Wyłączenie moda przy kolejnym uruchomieniu cofa go.
-  Klient: pack\root.index składa na nowo z czystego 2.0.66 i wybranych modów; root.data z paczki ma
+  Klient: pack\root.index składa na nowo z czystego 2.0.67 i wybranych modów; root.data z paczki ma
     w sobie każdy wariant każdego pliku, a gra czyta tylko to, na co
     wskazuje indeks. Tak samo etc (13, 14). gamedata (ikona 76009) – jak dotąd, gdy wybrano 11.
-    Sprawdza: wersję klienta (CLIENT_VERSION 2.0.66), czy root/etc są w znanej wersji (inaczej pyta),
+    Sprawdza: wersję klienta (CLIENT_VERSION 2.0.67), czy root/etc są w znanej wersji (inaczej pyta),
     czy wszystkie 3 części zip są rozpakowane. Łatka FPS: z 01 włącza, bez 01 (gdy było) wyłącza.
     Wybór zapisuje w <klient>\mt2009_mody.txt – następnym razem lista startuje od niego.
-  Serwer: pliki z wybranymi modami albo czyste (2.35.0 / Twój cube.cpp / sprzed przebudowy
+  Serwer: pliki z wybranymi modami albo czyste (2.36.0 / sprzed przebudowy
     towarzysza). Plik, którego nie rozpoznaje (Twoje własne zmiany), nadpisuje tylko po pytaniu.
     Dopisuje locale_string (11), pyta o SQL 76009 i o przebudowanie.
   Wszystko, co podmienia, idzie najpierw do <folder>\backup_mody_<data>\.

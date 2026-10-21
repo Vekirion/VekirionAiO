@@ -1,7 +1,7 @@
 // MT2009 Plus - instalator z wyborem modow (Wybierz_mody.bat kompiluje ten plik).
 // C# 5 / .NET Framework 4 (csc.exe z Windowsa albo Add-Type w PowerShellu).
 //
-// KLIENT: pack\root.index jest skladany na nowo z czystego indeksu klienta 2.0.66
+// KLIENT: pack\root.index jest skladany na nowo z czystego indeksu klienta 2.0.67
 // (instalator\root.base) i rekordow wybranych modow (instalator\root.var). Dane
 // (klient\pack\root.data z paczki) maja w sobie kazdy wariant kazdego pliku, wiec
 // root.data jest zawsze ten sam, a o tym, ktore pliki gra czyta, decyduje tylko indeks.
@@ -49,17 +49,18 @@ namespace MT2009
 		static readonly uint[] IndexKey = new uint[] { 533489241, 64592187, 413438084, 181131063 };
 
 		// klient\pack z paczki (sprawdzenie, czy wszystkie czesci zip sa rozpakowane)
-		const string PkgRootData = "89C255701A65DA689A914BD93679AD7D";
+		const string PkgRootData = "20D72D80A9FAA7C8DA24AAC5F6DB77FC";
 		const string PkgEtcData = "BA9319906DA1F1EED275A6315FBFEAD4";
 		const string PkgGdIndex = "2774CD4D6DE696B87C097A1F82553764";
 		const string PkgGdData = "9D55A889979FF92DF4D193ACCA6DBB25";
-		// root.index, nad ktorym wolno pracowac bez pytania: czysty 2.0.66, 2.0.66 z przebudowa
-		// towarzysza (20.10), paczki MT2009_Gotowe z 19.10 i obie z 20.10
+		// root.index, nad ktorym wolno pracowac bez pytania: czysty 2.0.67, ta paczka (2.0.67),
+		// a ze starszych: czysty 2.0.66, 2.0.66 z przebudowa towarzysza i paczki na 2.0.66
 		static readonly string[] KnownRoot = new string[] {
+			"02962C89D2496A4BAA69365DB3641CB3", "B4F767CF3B1A338403D74F2207D56560",
 			"AD3F4451522C4893B3ABB07F683F5396", "7CF4349FFBFE8B5C59A6D0B9039001D8",
 			"CD00ACB0BCB28106489F1700124AD0EC", "A1FE01D7DE278B1B98409FAED93E0E45",
 			"9D84A16A67D56A177E179316D91B1FA5", "A6F93C4D57331CC535D409E595A3CBF0" };
-		// etc.index: czysty 2.0.66, z poprawka mgly, z mgla i znacznikiem
+		// etc.index: czysty (2.0.66 i 2.0.67 maja ten sam etc), z poprawka mgly, z mgla i znacznikiem
 		static readonly string[] KnownEtc = new string[] {
 			"3D5E1E22A73C42DAF0825A0D6BD311C8", "A748EC48CFD78076FEADF7AE2556EAB6", "1FCE8FCDF557EE4B25ABE32A2E2A0980" };
 		const string CleanGdIndex = "F723CD1B7E392EC6E55EF218DACA9585";
@@ -145,7 +146,7 @@ namespace MT2009
 			if (string.IsNullOrEmpty(Pkg)) Pkg = AppDomain.CurrentDomain.BaseDirectory;
 			Pkg = Pkg.TrimEnd('\\', '/');
 			if (!File.Exists(Path.Combine(Pkg, "instalator\\root.var")))
-				throw new Exception("Brak " + Pkg + "\\instalator - uruchom Wybierz_mody.bat z rozpakowanej paczki MT2009_Gotowe.");
+				throw new Exception("Brak " + Pkg + "\\instalator - uruchom Wybierz_mody.bat z rozpakowanej paczki Vekirion AiO.");
 
 			Clear();
 			Title("MT2009 Plus - instalacja wybranych modow");
@@ -373,17 +374,17 @@ namespace MT2009
 
 			string kp = Path.Combine(Pkg, "klient\\pack");
 			Console.WriteLine("  Sprawdzam pliki paczki...");
-			CheckPkg(Path.Combine(kp, "root.data"), PkgRootData, "MT2009_Gotowe_1z3.zip");
+			CheckPkg(Path.Combine(kp, "root.data"), PkgRootData, "klient\\pack\\root.data");
 			Ok("Pliki paczki kompletne.");
 
 			string ver = Path.Combine(client, "CLIENT_VERSION");
 			if (File.Exists(ver))
 			{
 				string v = File.ReadAllText(ver).Trim();
-				if (v != "2.0.66")
+				if (v != "2.0.67")
 				{
-					Warn("Klient ma wersje " + v + ", a mody sa zrobione na 2.0.66.");
-					if (!Yes("  Mimo to wgrac root 2.0.66 z modami? [t/N] > ")) throw new Exception("Przerwano.");
+					Warn("Klient ma wersje " + v + ", a mody sa zrobione na 2.0.67.");
+					if (!Yes("  Mimo to wgrac root 2.0.67 z modami? [t/N] > ")) throw new Exception("Przerwano.");
 				}
 			}
 
@@ -395,8 +396,8 @@ namespace MT2009
 			string have = Md5(rootIdx);
 			if (Array.IndexOf(KnownRoot, have) < 0 && have != SavedValue(saveFile, "root"))
 			{
-				Warn("pack\\root.index nie jest ani czystym 2.0.66, ani wersja z tej paczki (moze patcher wgral nowsza?).");
-				if (!Yes("  Zastapic go rootem 2.0.66 z wybranymi modami? [t/N] > ")) throw new Exception("Przerwano - nic nie zostalo zmienione.");
+				Warn("pack\\root.index nie jest ani czystym 2.0.67, ani wersja z tej paczki (moze patcher wgral nowsza?).");
+				if (!Yes("  Zastapic go rootem 2.0.67 z wybranymi modami? [t/N] > ")) throw new Exception("Przerwano - nic nie zostalo zmienione.");
 			}
 			byte[] rootIndex = EncodeIndex(Apply(File.ReadAllBytes(Path.Combine(Pkg, "instalator\\root.base")),
 				Path.Combine(Pkg, "instalator\\root.var"), sel));
@@ -410,7 +411,7 @@ namespace MT2009
 				string e = Md5(etcIdx);
 				if (Array.IndexOf(KnownEtc, e) >= 0 || e == SavedValue(saveFile, "etc"))
 				{
-					CheckPkg(Path.Combine(kp, "etc.data"), PkgEtcData, "MT2009_Gotowe_3z3.zip");
+					CheckPkg(Path.Combine(kp, "etc.data"), PkgEtcData, "klient\\pack\\etc.data");
 					etcIndex = EncodeIndex(Apply(File.ReadAllBytes(Path.Combine(Pkg, "instalator\\etc.base")),
 						Path.Combine(Pkg, "instalator\\etc.var"), sel));
 					doEtc = true;
@@ -437,8 +438,8 @@ namespace MT2009
 				if (g == PkgGdIndex) Done("11", "ikona 76009 juz byla");
 				else if (g == CleanGdIndex)
 				{
-					CheckPkg(Path.Combine(kp, "gamedata.index"), PkgGdIndex, "MT2009_Gotowe_2z3.zip");
-					CheckPkg(Path.Combine(kp, "gamedata.data"), PkgGdData, "MT2009_Gotowe_2z3.zip");
+					CheckPkg(Path.Combine(kp, "gamedata.index"), PkgGdIndex, "klient\\pack\\gamedata");
+					CheckPkg(Path.Combine(kp, "gamedata.data"), PkgGdData, "klient\\pack\\gamedata");
 					doGd = true;
 				}
 				else { Warn("pack\\gamedata w nieznanej wersji - bez nowej ikony 76009 (wykrywacz dziala)."); Done("11", "bez nowej ikony - gamedata w innej wersji"); }
@@ -513,7 +514,7 @@ namespace MT2009
 		static void CheckPkg(string path, string md5, string zip)
 		{
 			if (!File.Exists(path) || Md5(path) != md5)
-				throw new Exception("Plik paczki " + path + " jest niepelny albo z innej paczki. Rozpakuj ponownie wszystkie trzy czesci (" + zip + ") do jednego folderu.");
+				throw new Exception("Plik paczki " + path + " jest niepelny albo z innej paczki (" + zip + "). Pobierz i rozpakuj paczke ponownie.");
 		}
 
 		// ---- EterPack: indeks = naglowek (12 B) + rekordy po 192 B

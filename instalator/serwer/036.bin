@@ -3404,6 +3404,18 @@ int CInputMain::MyShop(LPCHARACTER ch, const char * c_pData, size_t uiBytes)
 	return (iExtraLen);
 }
 
+// MT2009_PLUS_TOOL_REFINE_POINTS_V1 (helper) (server-patches/enginefixes): a Herbalist's Knife or a
+// pickaxe refines only with its points gathered (socket0 >= value2) - the
+// check of ReceiveItem, missing on a resent packet and on the keep-open path.
+static bool RefineToolNotReady(LPITEM item)
+{
+	if (!item)
+		return false;
+	if (item->GetType() == ITEM_HERB_KNIFE || item->GetType() == ITEM_PICK)
+		return (DWORD) item->GetSocket(0) < (DWORD) item->GetValue(2);
+	return false;
+}
+
 void CInputMain::Refine(LPCHARACTER ch, const char* c_pData)
 {
 	const TPacketCGRefine* p = reinterpret_cast<const TPacketCGRefine*>(c_pData);
@@ -3469,6 +3481,13 @@ void CInputMain::Refine(LPCHARACTER ch, const char* c_pData)
 	if (item->GetType() == ITEM_PICK && p->type != REFINE_TYPE_PICKAXE)
 	{
 		ch->ChatPacket(CHAT_TYPE_INFO, LC_TEXT("ITEM_PICKAXE_REFINE_ONLY_DEOKBAE"));
+		ch->ClearRefineMode();
+		return;
+	}
+
+	// MT2009_PLUS_TOOL_REFINE_POINTS_V1 (packet): a tool without its points is not refined.
+	if (RefineToolNotReady(item))
+	{
 		ch->ClearRefineMode();
 		return;
 	}
@@ -3565,7 +3584,8 @@ void CInputMain::Refine(LPCHARACTER ch, const char* c_pData)
 			{
 				LPCHARACTER refineCh = CHARACTER_MANAGER::instance().Find(dwRefineNPCVID);
 
-				if (refineCh)
+				// MT2009_PLUS_TOOL_REFINE_POINTS_V1 (reopen): no new window for a tool without its points.
+				if (refineCh && !RefineToolNotReady(refreshedItem))
 				{
 					int distance = DISTANCE_APPROX((ch->GetX() - refineCh->GetX()), (ch->GetY() - refineCh->GetY()));
 
