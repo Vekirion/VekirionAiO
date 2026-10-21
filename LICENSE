@@ -1,0 +1,150 @@
+Vekirion AiO - paczka modów do MT2009 PLUS
+Copyright (c) 2026 Vekirion
+
+Vekirion AiO is a modification of MT2009 PLUS by ZAXEP/SIZOWSKI, itself a
+modification of Metin2 Playerbots by Tieru, and is shared under the same
+licence, CC BY-NC-SA 4.0. Vekirion AiO jest przeróbką MT2009 PLUS
+(ZAXEP/SIZOWSKI), który jest przeróbką Metin2 Playerbots (Tieru), i jest
+udostępniany na tej samej licencji, CC BY-NC-SA 4.0.
+
+  Vekirion AiO      - Vekirion
+  MT2009 PLUS       - ZAXEP/SIZOWSKI - https://github.com/zaxerrrr-dot/mt2009-sp-plus - CC BY-NC-SA 4.0
+  Metin2 Playerbots - Tieru - https://github.com/TieruYT/metin2-playerbots - CC BY-NC-SA 4.0
+
+Licence text / Tekst licencji:
+  https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode.pl
+  https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode.en
+
+===========================================================================
+POLSKI
+===========================================================================
+
+Co zmienia Vekirion AiO: lista modów i zmienionych plików jest w
+MT2009_Gotowe/CZYTAJ.txt i MT2009_Luzne_pliki/CZYTAJ.txt, a dokładne zmiany
+względem MT2009 PLUS (klient 2.0.66, serwer 2.35.0) w plikach *.diff i *.patch
+(MT2009_Luzne_pliki/wszystko/ oraz mody_osobno/). Zmienione miejsca w kodzie
+są oznaczone markerami MT2009_PLUS_*.
+
+W skrócie (wiąże tekst licencji): możesz kopiować, udostępniać i zmieniać
+tę paczkę, także publicznie, jeśli:
+  - podasz autorów (Vekirion, ZAXEP/SIZOWSKI, Tieru) z linkami jak wyżej,
+    a w przeróbce zaznaczysz, co zmieniłeś;
+  - nie wykorzystasz jej do celów komercyjnych;
+  - przeróbkę udostępnisz na tej samej licencji.
+
+Jak podać autora:
+  Vekirion AiO - Vekirion - na podstawie MT2009 PLUS (ZAXEP/SIZOWSKI,
+  https://github.com/zaxerrrr-dot/mt2009-sp-plus) i Metin2 Playerbots (Tieru,
+  https://github.com/TieruYT/metin2-playerbots) - CC BY-NC-SA 4.0
+
+Licencja obejmuje pracę autorów: kod, skrypty, instalatory, dane, grafiki
+i dokumentację. Nie obejmuje Metin2 (Ymir Interactive, Webzen), paczek plików
+serwerowych, bibliotek stron trzecich ani części, które mają własną licencję.
+Pliki klienta i serwera w paczce to pliki MT2009 PLUS ze zmianami tej paczki -
+ich części pochodzące z MT2009 PLUS i Metin2 Playerbots zostają na warunkach
+tych projektów (poniżej).
+
+===========================================================================
+ENGLISH
+===========================================================================
+
+What Vekirion AiO changes: the list of mods and changed files is in
+MT2009_Gotowe/CZYTAJ.txt and MT2009_Luzne_pliki/CZYTAJ.txt, and the exact
+changes against MT2009 PLUS (client 2.0.66, server 2.35.0) in the *.diff and
+*.patch files (MT2009_Luzne_pliki/wszystko/ and mody_osobno/). The changed
+places in the code carry MT2009_PLUS_* markers.
+
+In short (the licence text is what binds): you may copy, share and modify this
+package, publicly too, provided that:
+  - you credit the authors (Vekirion, ZAXEP/SIZOWSKI, Tieru) with the links
+    above, and say what you changed in a modified version;
+  - you do not use it for commercial purposes;
+  - you share a modified version under the same licence.
+
+How to credit:
+  Vekirion AiO - Vekirion - based on MT2009 PLUS (ZAXEP/SIZOWSKI,
+  https://github.com/zaxerrrr-dot/mt2009-sp-plus) and Metin2 Playerbots (Tieru,
+  https://github.com/TieruYT/metin2-playerbots) - CC BY-NC-SA 4.0
+
+The licence covers the authors' work: code, scripts, installers, data,
+graphics and documentation. It does not cover Metin2 (Ymir Interactive,
+Webzen), the server-file packages, third-party libraries or parts that carry a
+licence of their own. The client and server files in this package are MT2009
+PLUS files with this package's changes - their parts that come from MT2009 PLUS
+and Metin2 Playerbots stay under those projects' terms (below).
+
+===========================================================================
+The licence of MT2009 PLUS follows. / Licencja MT2009 PLUS:
+===========================================================================
+
+MT2009 PLUS
+Copyright (c) 2026 ZAXEP/SIZOWSKI (github.com/zaxerrrr-dot/mt2009-sp-plus)
+
+MT2009 PLUS is a modification of Metin2 Playerbots by Tieru and is shared under
+the same licence, CC BY-NC-SA 4.0. MT2009 PLUS jest przeróbką Metin2 Playerbots
+(Tieru) i jest udostępniany na tej samej licencji, CC BY-NC-SA 4.0. Co zmienia
+MT2009 PLUS: README.md, CHANGELOG.md i NOTICE.md.
+
+  Metin2 Playerbots - Tieru - https://github.com/TieruYT/metin2-playerbots - CC BY-NC-SA 4.0
+
+The licence of the original project follows. / Licencja projektu oryginalnego:
+
+Metin2 Playerbots
+Copyright (c) 2026 Tieru (github.com/TieruYT)
+
+===========================================================================
+POLSKI
+===========================================================================
+
+Od wersji 2.2.17 projekt Metin2 Playerbots jest udostępniany na licencji
+Creative Commons Uznanie autorstwa - Użycie niekomercyjne - Na tych samych
+warunkach 4.0 Międzynarodowa (CC BY-NC-SA 4.0).
+
+  Tekst licencji:  https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode.pl
+  Skrót licencji:  https://creativecommons.org/licenses/by-nc-sa/4.0/deed.pl
+
+W skrócie (wiąże tekst licencji): możesz kopiować, udostępniać i zmieniać
+projekt, także publicznie, jeśli:
+  - podasz autora i link do projektu, a w przeróbce zaznaczysz, co
+    zmieniłeś;
+  - nie wykorzystasz go do celów komercyjnych;
+  - przeróbkę udostępnisz na tej samej licencji.
+
+Jak podać autora:
+  Metin2 Playerbots - Tieru - https://github.com/TieruYT/metin2-playerbots - CC BY-NC-SA 4.0
+
+Licencja obejmuje pracę autorów projektu: kod, skrypty, dane, grafiki
+i dokumentację. Nie obejmuje Metin2 (Ymir Interactive, Webzen), paczek plików
+serwerowych, bibliotek stron trzecich ani części, które mają własną licencję.
+Wersje do 2.2.16 włącznie zostały wydane na licencji MIT (LICENSE-MIT.txt)
+i na niej zostają. Szczegóły oraz dodatkowe zezwolenia autora (dobrowolne
+wpłaty na serwer, nagrywanie rozgrywki) są w pliku NOTICE.md.
+
+===========================================================================
+ENGLISH
+===========================================================================
+
+From version 2.2.17 the Metin2 Playerbots project is shared under the
+Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+licence (CC BY-NC-SA 4.0).
+
+  Licence text:     https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode.en
+  Licence summary:  https://creativecommons.org/licenses/by-nc-sa/4.0/deed.en
+
+In short (the licence text is what binds): you may copy, share and modify the
+project, publicly too, provided that:
+  - you credit the author and link to the project, and say what you changed
+    in a modified version;
+  - you do not use it for commercial purposes;
+  - you share a modified version under the same licence.
+
+How to credit:
+  Metin2 Playerbots - Tieru - https://github.com/TieruYT/metin2-playerbots - CC BY-NC-SA 4.0
+
+The licence covers the work of the project's authors: code, scripts, data,
+graphics and documentation. It does not cover Metin2 (Ymir Interactive,
+Webzen), the server-file packages, third-party libraries or parts that carry a
+licence of their own. Versions up to and including 2.2.16 were released under
+the MIT licence (LICENSE-MIT.txt) and stay under it. Details and the author's
+additional permissions (voluntary donations towards a server, recording
+gameplay) are in NOTICE.md.
