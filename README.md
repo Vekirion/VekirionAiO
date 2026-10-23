@@ -1,13 +1,16 @@
-# Vekirion AiO 2.1.1 – paczka modów do MT2009 PLUS
+# Vekirion AiO 2.1.2 – paczka modów do MT2009 PLUS
 
 Zestaw modów klienta i serwera do **MT2009 PLUS** (singleplayer Metin2 z botami), z instalatorem,
 w którym wybierasz, które mody wgrać.
 
 | | Wersja |
 |---|---|
-| Klient | MT2009 PLUS **2.0.67** |
-| Serwer | MT2009-PLUS-Serwer-2.12.0, **VERSION 2.36.0** (linux-port, Docker) |
+| Klient | MT2009 PLUS **2.0.68** |
+| Serwer | MT2009 PLUS **VERSION 2.37.0** (linux-port, Docker) |
 | Licencja | [CC BY-NC-SA 4.0](LICENSE) |
+
+> Starsze wersje klienta (2.0.67 i niżej) są nieaktualne – paczka ich nie obsługuje. Najpierw zaktualizuj
+> klienta `MT2009-Patcher.exe`, na starszym kliencie/serwerze użyj poprzedniej wersji paczki.
 
 > **Uwaga:** przed instalacją zrób kopię folderu `pack` klienta i folderu `linux-port` serwera.
 > Instalator robi własną kopię zapasową (`backup_mody_<data>`), ale druga nie zaszkodzi.
@@ -54,7 +57,7 @@ Limity towarzyszy ustawiasz w `docker/.env`: `M2_SIDEKICK_MAX_ACTIVE=2` (1–6),
 
 ## Instalacja
 
-Pobierz paczkę z [Releases](../../releases) albo `git clone` i rozpakuj folder `Vekirion_AiO_2.1.1`.
+Pobierz paczkę z [Releases](../../releases) albo `git clone` i rozpakuj folder `Vekirion_AiO_2.1.2`.
 
 ### Windows – wybrane mody (zalecane)
 
@@ -73,6 +76,8 @@ zostaje usunięty. **Po każdym użyciu `MT2009-Patcher.exe` uruchom instalator 
 
 - **Klient:** przeciągnij zawartość `klient/pack` na folder `pack` klienta i zgódź się na podmianę.
   Potem skopiuj `klient/Ustaw_FPS.bat` do folderu klienta, uruchom i wpisz `1` (łatka FPS).
+  `Ustaw_FPS.bat` czyta wersję z pliku `CLIENT_VERSION` klienta i działa tylko na 2.0.68 – starszą
+  wersję zgłasza jako nieaktualną i niczego nie zmienia.
 - **Serwer:** patrz niżej – kroki są takie same jak na Linuxie.
 
 ### Serwer ręcznie (Windows albo Linux)
@@ -114,7 +119,7 @@ Ręczne kopiowanie wgrywa **wszystkie** mody serwera. Żeby wybrać tylko niekt�
 - **Klient:** pliki `.py` gry są w `pack/root` – `root.data` (zawartość) i `root.index` (spis, co
   gdzie leży). `klient/pack/root.data` z paczki zawiera każde połączenie modów każdego zmienionego
   pliku (np. `game.py` ma 15 wariantów). Instalator składa nowy `root.index` z czystego indeksu
-  2.0.67 (`instalator/root.base`) i wpisów wybranych wariantów (`instalator/root.var`), po czym
+  2.0.68 (`instalator/root.base`) i wpisów wybranych wariantów (`instalator/root.var`), po czym
   pakuje go i szyfruje jak oryginał. Gra czyta tylko to, na co wskazuje indeks. Tak samo
   `pack/etc` (mody 13, 14); `pack/gamedata` (ikona 76009) jest kopiowany przy modzie 11.
 - **Serwer:** dla każdego pliku źródłowego wybiera wersję z wybranymi modami albo czystą
@@ -128,7 +133,7 @@ Ręczne kopiowanie wgrywa **wszystkie** mody serwera. Żeby wybrać tylko niekt�
 ## Struktura
 
 ```
-Vekirion_AiO_2.1.1/
+Vekirion_AiO_2.1.2/
   Wybierz_mody.bat        instalator z wyborem modów (Windows)
   CZYTAJ.txt              opis modów i instalacji
   klient/

@@ -48,6 +48,10 @@
 #include "p2p.h"
 #include "questmanager.h"
 #include "safebox.h"
+// MT2009_PLUS_237_GLOBAL_MODE_V1: the refine materials a bot holds (playerbot_elements.cpp) and the world's
+// M2_BONUS_MODE (playerbot_bonus_mode.cpp) - playerbot_economy.h's PlayerBotRefineLeavesGearMaterials.
+ITEM_COUNT ElementsRefineMaterialCount(LPCHARACTER ch, LPITEM refined, DWORD vnum);
+bool BonusModeGlobal();
 #include "questpc.h"
 #include "banword.h"
 #include "exchange.h"
@@ -381,6 +385,10 @@ namespace { bool HandlePlayerBotConversationWith(DWORD playerPID, const char* pl
 // as a party. After the guild finder and the dungeon finder, whose refusal
 // it borrows.
 #include "playerbot_guild_shaman.h"
+// MT2009_PLUS_BOT_YOHARA_HANDOVER_V1 (include): the bots between the game cores
+// - Zaklety Las, the loot runs on the 90-level maps - last,
+// after the temple, the dungeon runs and everything they borrow.
+#include "playerbot_yohara_bots.h"
 
 namespace
 {
@@ -3422,6 +3430,10 @@ namespace
 		// Tanaka and Zuo run where their map is, bots or none
 		// (playerbot_world_events.h).
 		ManagePlayerBotWorldEvents(dwNow);
+		// MT2009_PLUS_BOT_YOHARA_HANDOVER_V1: a core with no bot of its own (game2, game3, the
+		// first core) claims the handovers of its maps here; the first bot in starts Update,
+		// which goes on with it (playerbot_yohara_bots.h).
+		ManagePlayerBotYoharaHandover(dwNow);
 		// A player's companion, on a core no bot has woken yet: the first of
 		// them starts Update and ends this clock (playerbot_sidekick.h).
 		ManagePlayerBotSidekicks(dwNow);
@@ -3509,6 +3521,14 @@ bool CPlayerBotManager::Spawn(DWORD dwPlayerID, BYTE bEmpire)
 	// for its new name (playerbot_legends.h).
 	if (IsPlayerBotLegendNameHold(dwPlayerID))
 		return false;
+	// MT2009_PLUS_BOT_YOHARA_HANDOVER_V1: on another core of this channel, or on its way
+	// there (playerbot_yohara_bots.h) - that core has it.
+	if (!bSidekick && IsPlayerBotYoharaAway(dwPlayerID))
+	{
+		PlayerBotLogThrottled("spawn_yohara_away", get_dword_time(),
+				"PLAYERBOT_HANDOVER: spawn refused pid=%u, on another core of the channel", dwPlayerID);
+		return false;
+	}
 	// MT2009_PLUS_AREZZO_DUNGEON_BOTS_V1 (spawn): the Arezzo dungeon cohort lives
 	// on the core that hosts the dungeons; every other core leaves it alone.
 	if (IsPlayerBotArezzoDungeonReservedPID(dwPlayerID))
@@ -4497,7 +4517,8 @@ void CPlayerBotManager::TopUpMissingBots(DWORD dwNow)
 		// the top-up from asking for it every minute only for SpawnPendingBatch
 		// to drop it again.
 		else if (m_setBannedBots.find(*it) == m_setBannedBots.end() && !IsRestingBot(*it) && !IsPlayerBotRetirementHold(*it) &&
-				!IsPlayerBotSidekickPID(*it) && !IsPlayerBotTakeoverHold(*it))
+				!IsPlayerBotSidekickPID(*it) && !IsPlayerBotTakeoverHold(*it) &&
+				!IsPlayerBotYoharaAway(*it))	// MT2009_PLUS_BOT_YOHARA_HANDOVER_V1
 			missing.push_back(*it);
 	}
 	if (missing.empty())
@@ -5337,6 +5358,11 @@ void CPlayerBotManager::OnGuildBotOrder(LPCHARACTER ch, const char* szArgument)
 // core loads at the owner's side, on the owner's map.
 bool CPlayerBotManager::PlaceLoadingSidekick(DWORD dwPlayerID, long& lMapIndex, long& x, long& y)
 {
+	// MT2009_PLUS_BOT_YOHARA_HANDOVER_V1: a bot this core claimed from another core of the channel
+	// loads on the spot its handover row names (playerbot_yohara_bots.h) - the same hook, the same
+	// "saved on a map this core does not host".
+	if (!IsPlayerBotSidekickPID(dwPlayerID) && PlacePlayerBotYoharaArrival(dwPlayerID, lMapIndex, x, y))
+		return true;
 	LPCHARACTER owner = GetPlayerBotSidekickOwnerHere(dwPlayerID);
 	if (!owner || owner->IsDead() || !owner->GetSectree())
 		return false;
@@ -5945,6 +5971,16 @@ namespace
 	// Easing back takes only a bot with no live stand (cost 0 or 1): an owner
 	// sent away would ask to come back for its next service, and the two
 	// would chase each other.
+	// MT2009_PLUS_237_HANDOVER_PIN_V1: the coordinator's own moves (swap out, roam in/out, balance) pass by a
+	// bot with a live core handover row (1 = on its way, 2 = away on the map core: Zaklety Las or a loot
+	// run). A move logged it out of game3 and its new channel loaded it at home - the forest left after a
+	// minute; on the Yohara line's first night the coordinator sent forest bots away by the dozen and they
+	// churned (its cohort pin, MT2009_PLUS_BOT_YOHARA_COHORT_PIN_V1). The bot's own request (a shop) still goes.
+	std::string PlayerBotHandoverChannelPin()
+	{
+		return " AND pid NOT IN (SELECT pid FROM common.playerbot_core_handover WHERE state IN (1,2))";
+	}
+
 	std::string PlayerBotChannelSwapOutQuery(unsigned int want, int maxCost)
 	{
 		const std::string shop = std::to_string(playerbot_channel_rules::SHOP_CHANNEL);
@@ -5956,7 +5992,8 @@ namespace
 				"WHERE channel=" + shop + " AND shop_busy<=" + std::to_string(maxCost) +
 				" AND requested_channel=0 AND " + PlayerBotChannelSeen() +
 				" AND (moved_at IS NULL OR moved_at<DATE_SUB(NOW(),INTERVAL " +
-				std::to_string(PLAYERBOT_CHANNEL_MOVE_COOLDOWN_SECONDS) + " SECOND)) "
+				std::to_string(PLAYERBOT_CHANNEL_MOVE_COOLDOWN_SECONDS) + " SECOND)) " +
+				PlayerBotHandoverChannelPin() + " " + // MT2009_PLUS_237_HANDOVER_PIN_V1
 				"ORDER BY shop_busy,CRC32(CONCAT(pid,UNIX_TIMESTAMP())) LIMIT " + std::to_string(want);
 	}
 
@@ -5992,7 +6029,8 @@ namespace
 				" SECOND),moved_at=NOW(),updated_at=NOW() "
 				"WHERE channel<>" + shop + " AND requested_channel=0 AND shop_busy<" +
 				std::to_string(playerbot_channel_rules::MOVE_COST_PINNED) + " AND " +
-				PlayerBotChannelSeen() + " AND " + PlayerBotChannelStayedLongEnough() + " "
+				PlayerBotChannelSeen() + " AND " + PlayerBotChannelStayedLongEnough() + " " +
+				PlayerBotHandoverChannelPin() + " " + // MT2009_PLUS_237_HANDOVER_PIN_V1
 				"ORDER BY shop_busy,CRC32(CONCAT(pid,UNIX_TIMESTAMP())) LIMIT " + std::to_string(want);
 	}
 
@@ -6012,7 +6050,8 @@ namespace
 				" SECOND),moved_at=NOW(),updated_at=NOW() "
 				"WHERE channel=" + shop + " AND shop_busy<" +
 				std::to_string(playerbot_channel_rules::MOVE_COST_PINNED) + " AND requested_channel=0 AND " +
-				PlayerBotChannelSeen() + " AND " + PlayerBotChannelStayedLongEnough() + " "
+				PlayerBotChannelSeen() + " AND " + PlayerBotChannelStayedLongEnough() + " " +
+				PlayerBotHandoverChannelPin() + " " + // MT2009_PLUS_237_HANDOVER_PIN_V1
 				"ORDER BY shop_busy,CRC32(CONCAT(pid,UNIX_TIMESTAMP())) LIMIT " + std::to_string(want);
 	}
 
@@ -6029,7 +6068,8 @@ namespace
 				std::to_string(playerbot_channel_rules::MOVE_COST_PINNED) + " AND requested_channel=0 AND " +
 				PlayerBotChannelSeen() +
 				" AND (moved_at IS NULL OR moved_at<DATE_SUB(NOW(),INTERVAL " +
-				std::to_string(PLAYERBOT_CHANNEL_MOVE_COOLDOWN_SECONDS) + " SECOND)) "
+				std::to_string(PLAYERBOT_CHANNEL_MOVE_COOLDOWN_SECONDS) + " SECOND)) " +
+				PlayerBotHandoverChannelPin() + " " + // MT2009_PLUS_237_HANDOVER_PIN_V1
 				"ORDER BY shop_busy,CRC32(CONCAT(pid,UNIX_TIMESTAMP())) LIMIT " + std::to_string(want);
 	}
 
@@ -6770,6 +6810,10 @@ void CPlayerBotManager::Update()
 	// and the next round queued. Nothing here waits for the database.
 	RunChannelMachinery(dwNow);
 #endif
+	// MT2009_PLUS_BOT_YOHARA_HANDOVER_V1: the bots leaving this core for another,
+	// the channel's handover rows read, the claims spawned (playerbot_yohara_bots.h).
+	// Before the spawns, which ask who is away.
+	ManagePlayerBotYoharaHandover(dwNow);
 	// Bots a person has taken over from the advanced panel: out, and back when
 	// the time is up (playerbot_takeover.h). Before the spawns, which ask it.
 	ProcessPlayerBotTakeovers(dwNow);
@@ -7021,6 +7065,10 @@ WritePlayerBotGuildStatus(dwNow);
 			continue;
 
 		TPlayerBotAIState& state = s_mapPlayerBotAIStates[it->first];
+
+		// MT2009_PLUS_BOT_YOHARA_HANDOVER_V1: on its way to another core - out at the next Update.
+		if (IsPlayerBotYoharaLeaving(it->first))
+			continue;
 
 		// A human duel owns both halves of the tick, before errands and PvE targeting.
 		if (d->IsPhase(PHASE_GAME) && ManagePlayerBotDuelFlow(ch, state, dwNow))

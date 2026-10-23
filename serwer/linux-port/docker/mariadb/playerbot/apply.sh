@@ -222,6 +222,18 @@ if [ -n "${M2_DB_ROOT_PASSWORD:-}" ]; then
     fi
 fi
 
+# MT2009_PLUS_BOT_YOHARA_HANDOVER_V1: the bots' handovers between the game cores of a channel
+# (playerbot_core_handover.sql, playerbot_yohara_bots.h) start empty on every start - before the
+# fast start's skip, because no core holds a bot now: a bot that stayed on another core is saved
+# there and comes back through its home core (the stranded step, or the load's first village).
+if [ -s /opt/playerbot/playerbot_core_handover.sql ]; then
+    if db < /opt/playerbot/playerbot_core_handover.sql; then
+        echo "[playerbot-migrate] core handover table ready (emptied)"
+    else
+        echo "[playerbot-migrate] WARNING: playerbot_core_handover.sql failed" >&2
+    fi
+fi
+
 # MT2009_PLUS_FAST_START_V1: a start with nothing new skips the rest. The
 # fingerprint is every file this step reads (/opt/playerbot), this script and
 # the M2_/PLAYERBOT_ settings; it is written at the very end of a full run and
@@ -1885,7 +1897,7 @@ db -e "INSERT IGNORE INTO world.item_proto (vnum, name, locale_name, type, subty
 
 # MT2009_PLUS_AREZZO_V1: the first three places from the Arezzo files (the owner has the rights to
 # them), players only - bots later: Dolina Cyklopow (map 360, level 45, the Teleporter), Zaczarowany
-# Las (362, level 95+, the Temple of Ochao's portal) and the Biblioteka Wiedzy dungeon (363, level 30,
+# Las (362 - removed by MT2009_PLUS_237_ZAKLETY_LAS_V1, rows kept) and the Biblioteka Wiedzy dungeon (363, level 30,
 # quest/biblioteka_wiedzy.quest; game/arezzo/). Arezzo's own numbers (level 200 world) are not taken:
 # the cyclopes are level-45 copies of 3101-3105/3190/3191 (9601-9607), the forest's lemures are the
 # official 3301-3305 with 30% more HP and 25% more damage (9611-9615, the Temple and the Goblin waves
@@ -3566,6 +3578,47 @@ for zyw_sql in zywioly_talizmany.sql zywioly_moby.sql; do
     fi
 done
 
+# MT2009_PLUS_237_ZAKLETY_LAS_V1: Zaklety Las (353) and Erebu - the official Enchanted Forest past the Temple of Ochao
+# (the owner, 22 October 2026: on the 2.x line too, always open; it replaces the Arezzo forest, Zaczarowany Las 362, as
+# on the Yohara line). yohara_zaklety.sql (the Yohara line's tools/yohara_zaklety/gen_yzaklety.py, taken over by
+# tools/las237/port_las237.py) - the forest's monsters, bosses, Metins and guards; yohara_items_zaklety.sql - Kamien
+# Driad, the missions' items, Erebu's two chests; yohara_zaklety_zywioly.sql - the elements (after zywioly_moby.sql
+# above, which clears the bits of every mob it does not list). All idempotent (INSERT IGNORE / UPDATE). The groups,
+# drops and chests name these vnums: without them the cores stop.
+for yzl_sql in yohara_zaklety.sql yohara_items_zaklety.sql yohara_zaklety_zywioly.sql; do
+    [ -s "/opt/playerbot/$yzl_sql" ] || continue
+    if db < "/opt/playerbot/$yzl_sql"; then
+        echo "[playerbot-migrate] Zaklety Las: $yzl_sql applied"
+    else
+        fail_step "Zaklety Las: $yzl_sql failed" >&2
+    fi
+done
+# Once (MT2009_PLUS_237_ZAKLETY_LAS_V1): the Arezzo forest (362, natural_map) is in no map index and on no core any
+# more. Every character saved there or in an instance of it, or whose way out leads there - people and bots (all of
+# level 95 and more) - stands at the Temple of Ochao's gate (209, 853725 1416425, the temple's arrival; its En-Tai
+# Guardian's portal leads to Zaklety Las now). The Yohara line's step of the same name (one marker for both lines).
+forest_done=$(db -e "SELECT COUNT(*) FROM player.playerbot_migrations WHERE name = 'arezzo_forest_362_removed';" 2>/dev/null || echo x)
+if [ "$forest_done" = "0" ]; then
+    if forest_out=$(db -e "
+        START TRANSACTION;
+        UPDATE player.player
+           SET map_index = 209, x = 853725, y = 1416425, exit_map_index = 209, exit_x = 853725, exit_y = 1416425
+         WHERE map_index = 362 OR map_index BETWEEN 3620000 AND 3629999;
+        SELECT ROW_COUNT();
+        UPDATE player.player SET exit_map_index = 209, exit_x = 853725, exit_y = 1416425
+         WHERE exit_map_index = 362 OR exit_map_index BETWEEN 3620000 AND 3629999;
+        SELECT ROW_COUNT();
+        INSERT IGNORE INTO player.playerbot_migrations (name, done_at) VALUES ('arezzo_forest_362_removed', NOW());
+        COMMIT;
+    "); then
+        forest_chars=$(printf '%s\n' "$forest_out" | awk 'NR == 1')
+        forest_exits=$(printf '%s\n' "$forest_out" | awk 'NR == 2')
+        echo "[playerbot-migrate] the Arezzo forest (362) removed: ${forest_chars:-0} character(s) and ${forest_exits:-0} way(s) out moved to the Temple of Ochao"
+    else
+        fail_step "could not move the characters out of the removed Arezzo forest (362)" >&2
+    fi
+fi
+
 # MT2009_PLUS_REGEN_METIN_SPLIT_V1 (server-patches/regenmetin): Metins apart from bosses in the
 # respawn settings. The panels' "Metiny i bossowie" time (fastBossSpawn, a map's own
 # fastBossSpawn<map>) and count (m2_boss_count) are the bosses' alone now; the Metin stones read
@@ -3585,6 +3638,200 @@ if [ "$regen_split" != "1" ]; then
     else
         fail_step "could not copy the respawn settings to the Metins' rows" >&2
     fi
+fi
+
+# MT2009_PLUS_EXP_UNSIGNED_V1: a character's exp is a DWORD in the cores (TPlayerTable.exp, CHARACTER::GetExp,
+# exp_table, the db core's "exp = %u"), but the dump's player.exp is a signed INT: this sql_mode clamps it silently at
+# 2 147 483 647, below the bars of levels 100-120 (exp_table[120] = 2 500 000 000) - a save or relog cut the rest off.
+# INT UNSIGNED (4.29 bn) in player and player_deleted (copied with SELECT *); once, a no-op after
+# (information_schema decides). Before a db core starts.
+for exp_tab in player player_deleted; do
+    exp_type=$(db -e "SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='player' AND TABLE_NAME='$exp_tab' AND COLUMN_NAME='exp';" 2>/dev/null || true)
+    case "$exp_type" in
+        ''|*unsigned*) ;;
+        *)
+            if db -e "ALTER TABLE player.$exp_tab MODIFY exp INT UNSIGNED NOT NULL DEFAULT 0;"; then
+                echo "[playerbot-migrate] exp: player.$exp_tab.exp ($exp_type) is INT UNSIGNED"
+            else
+                fail_step "exp: could not make player.$exp_tab.exp INT UNSIGNED (MT2009_PLUS_EXP_UNSIGNED_V1)"
+            fi
+            ;;
+    esac
+done
+# MT2009_PLUS_GLOBAL_BONUS_V1 (server-patches/bonusyglobal/README.md): M2_BONUS_MODE - mt2009 (the default, the
+# world as it was) or global (Tieru's 2.2.31 "Bonusy jak na serwerze globalnym" and elements on every monster).
+# After every step above that writes item_attr or the monsters' elements (zywioly_*.sql, every *_zywioly.sql):
+#   * item_attr - world.item_attr_mt2009 holds the mt2009 rows exactly while the global set is in item_attr:
+#     global and it is empty -> bonusy_global.sql (copies the 14 rows, writes the global ones); mt2009 and it is not
+#     empty -> bonusy_mt2009.sql (puts the copy back). Anything else: nothing to do. Items keep their bonuses.
+#   * the monsters' elements - zywioly_moby.sql cleared and set them for mt2009 at this start already; global adds
+#     zywioly_moby_global.sql (tools/zywioly/gen_zywioly_moby_global.py) on top.
+#   * m2_bonus_global (1 = global), every start: the cores read it (element resistance at 30% against monsters,
+#     the double-item chance in the drop, a talisman's own resistance values) and send it to the client at login
+#     (quest zywioly: the tooltip's maxima, the element icons of global mode).
+case "$(printf '%s' "${M2_BONUS_MODE:-mt2009}" | tr 'A-Z' 'a-z' | tr -d ' \r')" in global|globalny|1) bonus_global=1 ;; *) bonus_global=0 ;; esac
+if bonus_saved=$(db -N -e "CREATE TABLE IF NOT EXISTS world.item_attr_mt2009 LIKE world.item_attr;
+        SELECT COUNT(*) FROM world.item_attr_mt2009;" 2>/dev/null | tr -d ' \r'); then
+    if [ "$bonus_global" = 1 ] && [ "$bonus_saved" = 0 ]; then
+        if db < /opt/playerbot/bonusy_global.sql; then
+            echo "[playerbot-migrate] bonus mode: global - item_attr switched to the global set (the mt2009 rows kept in world.item_attr_mt2009)"
+        else
+            fail_step "bonus mode: bonusy_global.sql failed; item_attr stays as it was" >&2
+        fi
+    elif [ "$bonus_global" = 0 ] && [ "$bonus_saved" != 0 ]; then
+        if db < /opt/playerbot/bonusy_mt2009.sql; then
+            echo "[playerbot-migrate] bonus mode: mt2009 - item_attr back to the mt2009 set ($bonus_saved rows)"
+        else
+            fail_step "bonus mode: bonusy_mt2009.sql failed; item_attr stays as it was" >&2
+        fi
+    else
+        echo "[playerbot-migrate] bonus mode: $([ "$bonus_global" = 1 ] && echo global || echo mt2009) - item_attr already on it"
+    fi
+else
+    fail_step "bonus mode: could not read world.item_attr_mt2009" >&2
+fi
+if [ "$bonus_global" = 1 ] && [ -s /opt/playerbot/zywioly_moby_global.sql ]; then
+    if db < /opt/playerbot/zywioly_moby_global.sql; then
+        echo "[playerbot-migrate] bonus mode: global - elements on every monster (zywioly_moby_global.sql)"
+    else
+        fail_step "bonus mode: zywioly_moby_global.sql failed" >&2
+    fi
+fi
+# MT2009_PLUS_GLOBAL_PROTO_V1 (server-patches/bonusyglobal/README.md, the owner's list of 15 October, item 19): the
+# fixed bonuses of item_proto (applytype0..2 / applyvalue0..2) of global mode - armour and weapons that are the same
+# item in the official data (Bambusowe Buty+9: movement 15 and fire resistance 10 instead of movement 25 and max
+# stamina 800; tools/protoglobal/gen_item_proto_global.py). item_proto_global.sql (re)writes the table of the global
+# values every start; world.item_proto_apply_mt2009 holds the mt2009 applies of every item global mode changed.
+#   * global: an item whose applies are not the global ones now (the first switch, or a step above wrote its mt2009
+#     values again this start) has them saved as its mt2009 ones, then gets the global ones; the guard (type,
+#     subtype, level) leaves a vnum that is another item alone; an item taken off the global list goes back.
+#   * mt2009: every saved item whose applies are still the global ones (an edit since stays) gets its mt2009 ones
+#     back, and the table empties.
+# Players' items follow at once (the fixed bonuses are the proto's, not the item's). Runs after every step above
+# that writes item_proto; the db core reads world.item_proto when it starts. The client switches its tooltips the
+# same way ("BonusMode 1", root protoglobal.py).
+if [ -s /opt/playerbot/item_proto_global.sql ] && db < /opt/playerbot/item_proto_global.sql; then
+    gp_same="p.applytype0 = g.applytype0 AND p.applyvalue0 = g.applyvalue0 AND p.applytype1 = g.applytype1 AND p.applyvalue1 = g.applyvalue1 AND p.applytype2 = g.applytype2 AND p.applyvalue2 = g.applyvalue2"
+    gp_guard="p.type = g.type AND p.subtype = g.subtype AND p.limitvalue0 = g.limitvalue0"
+    gp_back="p.applytype0 = m.applytype0, p.applyvalue0 = m.applyvalue0, p.applytype1 = m.applytype1, p.applyvalue1 = m.applyvalue1, p.applytype2 = m.applytype2, p.applyvalue2 = m.applyvalue2"
+    # MT2009_PLUS_237_GLOBAL_MODE_V1 (2.x): the 2.x engine's points end at 183 (POINT_ENCHANT_DARK) - an item whose
+    # global applies need a Yohara point (Sung Ma 184-187, Precyzja, the 6th/7th bonus points) keeps its mt2009 ones.
+    gp_sql="DELETE FROM world.item_proto_apply_global WHERE applytype0 >= 184 OR applytype1 >= 184 OR applytype2 >= 184;
+        CREATE TABLE IF NOT EXISTS world.item_proto_apply_mt2009 (vnum INT UNSIGNED NOT NULL PRIMARY KEY,
+            applytype0 TINYINT UNSIGNED NOT NULL, applyvalue0 INT NOT NULL, applytype1 TINYINT UNSIGNED NOT NULL,
+            applyvalue1 INT NOT NULL, applytype2 TINYINT UNSIGNED NOT NULL, applyvalue2 INT NOT NULL) ENGINE=InnoDB;
+        START TRANSACTION;"
+    if [ "$bonus_global" = 1 ]; then
+        gp_sql="$gp_sql
+        UPDATE world.item_proto p JOIN world.item_proto_apply_mt2009 m ON m.vnum = p.vnum
+            LEFT JOIN world.item_proto_apply_global g ON g.vnum = p.vnum SET $gp_back WHERE g.vnum IS NULL;
+        DELETE FROM world.item_proto_apply_mt2009 WHERE vnum NOT IN (SELECT vnum FROM world.item_proto_apply_global);
+        REPLACE INTO world.item_proto_apply_mt2009 SELECT p.vnum, p.applytype0, p.applyvalue0, p.applytype1,
+            p.applyvalue1, p.applytype2, p.applyvalue2 FROM world.item_proto p JOIN world.item_proto_apply_global g
+            ON g.vnum = p.vnum WHERE $gp_guard AND NOT ($gp_same);
+        UPDATE world.item_proto p JOIN world.item_proto_apply_global g ON g.vnum = p.vnum
+            JOIN world.item_proto_apply_mt2009 m ON m.vnum = p.vnum
+            SET p.applytype0 = g.applytype0, p.applyvalue0 = g.applyvalue0, p.applytype1 = g.applytype1,
+                p.applyvalue1 = g.applyvalue1, p.applytype2 = g.applytype2, p.applyvalue2 = g.applyvalue2
+            WHERE $gp_guard;
+        COMMIT;
+        SELECT COUNT(*) FROM world.item_proto p JOIN world.item_proto_apply_global g ON g.vnum = p.vnum
+            WHERE $gp_guard AND $gp_same;"
+    else
+        gp_sql="$gp_sql
+        UPDATE world.item_proto p JOIN world.item_proto_apply_mt2009 m ON m.vnum = p.vnum
+            LEFT JOIN world.item_proto_apply_global g ON g.vnum = p.vnum SET $gp_back
+            WHERE g.vnum IS NULL OR ($gp_same);
+        SELECT ROW_COUNT();
+        DELETE FROM world.item_proto_apply_mt2009;
+        COMMIT;"
+    fi
+    if gp_out=$(db -N -e "$gp_sql"); then
+        gp_n=$(printf '%s\n' "$gp_out" | tail -n 1 | tr -d ' \r')
+        if [ "$bonus_global" = 1 ]; then
+            echo "[playerbot-migrate] bonus mode: global - ${gp_n:-0} item(s) with the global fixed bonuses (item_proto_global.sql)"
+        else
+            echo "[playerbot-migrate] bonus mode: mt2009 - fixed bonuses: ${gp_n:-0} item(s) back to the mt2009 ones"
+        fi
+    else
+        fail_step "bonus mode: could not switch the fixed item bonuses (item_proto_global.sql)" >&2
+    fi
+else
+    fail_step "bonus mode: item_proto_global.sql missing or failed" >&2
+fi
+# MT2009_PLUS_237_GLOBAL_MODE_V1 (2.x, the owner 22 October 2026: "the whole global setting in env"): refining and
+# the monsters as on the global server sit behind M2_BONUS_MODE too (the Yohara line has them always on). Both switch
+# back exactly; mt2009 leaves item_proto, refine_proto's old rows and mob_proto as 2.36 had them.
+#   * refining - refine_global_2x.sql (tools/globalmode/gen_globalmode_2x.py from the owner's upgrade sheet): the
+#     sheet's recipes as refine_proto 40000.. and world.item_proto_refine_global (an item -> its global next item and
+#     recipe); global: the item's mt2009 refined_vnum / refine_set kept in world.item_proto_refine_mt2009, the global
+#     ones written; mt2009: the kept ones back wherever an item still has the global ones, then the table empties and the recipes 40000.. no item uses go.
+#   * the monsters - moby_global_2x.sql: the sheet's HP, damage, EXP, level, defence, stats, speeds, regeneration,
+#     effects, resistances, AI / immunity flags, ranks and two race flags (guarded: only a column that still holds the
+#     clean world's value, noted in world.mob_proto_global_saved); mt2009 while notes exist: moby_global_mt2009.sql
+#     puts every noted column that still holds the global value back. Their drops: the game image's
+#     mob_drop_item.global.txt (m2-drops). Every start, after every step above that writes item_proto / mob_proto.
+if [ "$bonus_global" = 1 ]; then
+    if [ -s /opt/playerbot/refine_global_2x.sql ] && db < /opt/playerbot/refine_global_2x.sql; then
+        rg_same="p.refined_vnum = g.refined_vnum AND p.refine_set = g.refine_set"
+        if rg_out=$(db -N -e "CREATE TABLE IF NOT EXISTS world.item_proto_refine_mt2009 (vnum INT UNSIGNED NOT NULL PRIMARY KEY,
+                refined_vnum INT UNSIGNED NOT NULL, refine_set INT UNSIGNED NOT NULL) ENGINE=InnoDB;
+            START TRANSACTION;
+            UPDATE world.item_proto p JOIN world.item_proto_refine_mt2009 m ON m.vnum = p.vnum
+                LEFT JOIN world.item_proto_refine_global g ON g.vnum = p.vnum
+                SET p.refined_vnum = m.refined_vnum, p.refine_set = m.refine_set WHERE g.vnum IS NULL;
+            DELETE FROM world.item_proto_refine_mt2009 WHERE vnum NOT IN (SELECT vnum FROM world.item_proto_refine_global);
+            REPLACE INTO world.item_proto_refine_mt2009 SELECT p.vnum, p.refined_vnum, p.refine_set FROM world.item_proto p
+                JOIN world.item_proto_refine_global g ON g.vnum = p.vnum WHERE NOT ($rg_same);
+            UPDATE world.item_proto p JOIN world.item_proto_refine_global g ON g.vnum = p.vnum
+                JOIN world.item_proto_refine_mt2009 m ON m.vnum = p.vnum
+                SET p.refined_vnum = g.refined_vnum, p.refine_set = g.refine_set;
+            COMMIT;
+            SELECT COUNT(*) FROM world.item_proto_refine_mt2009;"); then
+            echo "[playerbot-migrate] bonus mode: global - refining as on the global server, $(printf '%s\n' "$rg_out" | tail -n 1 | tr -d ' \r') item step(s) (refine_global_2x.sql)"
+        else
+            fail_step "bonus mode: could not switch the refine steps to the global ones" >&2
+        fi
+    else
+        fail_step "bonus mode: refine_global_2x.sql missing or failed" >&2
+    fi
+    if [ -s /opt/playerbot/moby_global_2x.sql ] && db < /opt/playerbot/moby_global_2x.sql; then
+        echo "[playerbot-migrate] bonus mode: global - the monsters as on the global server, $(db -N -e "SELECT COUNT(*) FROM world.mob_proto_global_saved" 2>/dev/null | tr -d ' \r') value(s) (moby_global_2x.sql)"
+    else
+        fail_step "bonus mode: moby_global_2x.sql missing or failed" >&2
+    fi
+else
+    if rg_out=$(db -N -e "CREATE TABLE IF NOT EXISTS world.item_proto_refine_mt2009 (vnum INT UNSIGNED NOT NULL PRIMARY KEY,
+            refined_vnum INT UNSIGNED NOT NULL, refine_set INT UNSIGNED NOT NULL) ENGINE=InnoDB;
+        CREATE TABLE IF NOT EXISTS world.item_proto_refine_global LIKE world.item_proto_refine_mt2009;
+        START TRANSACTION;
+        UPDATE world.item_proto p JOIN world.item_proto_refine_mt2009 m ON m.vnum = p.vnum
+            LEFT JOIN world.item_proto_refine_global g ON g.vnum = p.vnum
+            SET p.refined_vnum = m.refined_vnum, p.refine_set = m.refine_set
+            WHERE g.vnum IS NULL OR (p.refined_vnum = g.refined_vnum AND p.refine_set = g.refine_set);
+        SELECT ROW_COUNT();
+        DELETE FROM world.item_proto_refine_mt2009;
+        DELETE FROM world.refine_proto WHERE id BETWEEN 40000 AND 49999
+            AND id NOT IN (SELECT refine_set FROM world.item_proto);
+        COMMIT;"); then
+        rg_n=$(printf '%s\n' "$rg_out" | tail -n 1 | tr -d ' \r')
+        [ "${rg_n:-0}" = 0 ] || echo "[playerbot-migrate] bonus mode: mt2009 - refining: $rg_n item step(s) back to the mt2009 ones"
+    else
+        fail_step "bonus mode: could not put the mt2009 refine steps back" >&2
+    fi
+    mg_saved=$(db -N -e "CREATE TABLE IF NOT EXISTS world.mob_proto_global_saved (vnum INT UNSIGNED NOT NULL,
+        col VARCHAR(32) NOT NULL, PRIMARY KEY (vnum, col)) ENGINE=InnoDB;
+        SELECT COUNT(*) FROM world.mob_proto_global_saved;" 2>/dev/null | tr -d ' \r')
+    if [ -n "$mg_saved" ] && [ "$mg_saved" != 0 ]; then
+        if [ -s /opt/playerbot/moby_global_mt2009.sql ] && db < /opt/playerbot/moby_global_mt2009.sql; then
+            echo "[playerbot-migrate] bonus mode: mt2009 - the monsters back to the mt2009 values ($mg_saved noted)"
+        else
+            fail_step "bonus mode: moby_global_mt2009.sql missing or failed" >&2
+        fi
+    fi
+fi
+if ! db -e "REPLACE INTO player.quest (dwPID, szName, szState, lValue) VALUES (0, 'm2_bonus_global', '', $bonus_global);"; then
+    fail_step "bonus mode: could not write m2_bonus_global" >&2
 fi
 
 # MT2009_PLUS_FRESH_INSTALL_FIX_V1: every row this script makes as a copy of another

@@ -1,7 +1,7 @@
 // MT2009 Plus - instalator z wyborem modow (Wybierz_mody.bat kompiluje ten plik).
 // C# 5 / .NET Framework 4 (csc.exe z Windowsa albo Add-Type w PowerShellu).
 //
-// KLIENT: pack\root.index jest skladany na nowo z czystego indeksu klienta 2.0.67
+// KLIENT: pack\root.index jest skladany na nowo z czystego indeksu klienta 2.0.68
 // (instalator\root.base) i rekordow wybranych modow (instalator\root.var). Dane
 // (klient\pack\root.data z paczki) maja w sobie kazdy wariant kazdego pliku, wiec
 // root.data jest zawsze ten sam, a o tym, ktore pliki gra czyta, decyduje tylko indeks.
@@ -46,24 +46,24 @@ namespace MT2009
 			new Mod("29", false, true, "Ulepszanie co 0,2 s zamiast co 1 s"),
 		};
 
+		// wersja klienta, na ktora jest ta paczka (CLIENT_VERSION)
+		const string ClientVersion = "2.0.68";
+
 		static readonly uint[] IndexKey = new uint[] { 533489241, 64592187, 413438084, 181131063 };
 
 		// klient\pack z paczki (sprawdzenie, czy wszystkie czesci zip sa rozpakowane)
-		const string PkgRootData = "20D72D80A9FAA7C8DA24AAC5F6DB77FC";
+		const string PkgRootData = "00C779A113C6EAB85ABCE30A5C9891A4";
 		const string PkgEtcData = "BA9319906DA1F1EED275A6315FBFEAD4";
-		const string PkgGdIndex = "2774CD4D6DE696B87C097A1F82553764";
-		const string PkgGdData = "9D55A889979FF92DF4D193ACCA6DBB25";
-		// root.index, nad ktorym wolno pracowac bez pytania: czysty 2.0.67, ta paczka (2.0.67),
-		// a ze starszych: czysty 2.0.66, 2.0.66 z przebudowa towarzysza i paczki na 2.0.66
+		const string PkgGdIndex = "0E10A126D0B47073C1D95C811A14C974";
+		const string PkgGdData = "9ADD967DADB799FEC4C029F4FF13F08F";
+		// root.index, nad ktorym wolno pracowac bez pytania: czysty 2.0.68 i ta paczka (2.0.68, wszystkie mody).
+		// Inny zestaw modow z tej paczki rozpoznaje po root= w mt2009_mody.txt.
 		static readonly string[] KnownRoot = new string[] {
-			"02962C89D2496A4BAA69365DB3641CB3", "B4F767CF3B1A338403D74F2207D56560",
-			"AD3F4451522C4893B3ABB07F683F5396", "7CF4349FFBFE8B5C59A6D0B9039001D8",
-			"CD00ACB0BCB28106489F1700124AD0EC", "A1FE01D7DE278B1B98409FAED93E0E45",
-			"9D84A16A67D56A177E179316D91B1FA5", "A6F93C4D57331CC535D409E595A3CBF0" };
-		// etc.index: czysty (2.0.66 i 2.0.67 maja ten sam etc), z poprawka mgly, z mgla i znacznikiem
+			"7E79DE4ADB97D04A6433B8B894DD7011", "EB7CE4FB8AA081821DD993E2309B102F" };
+		// etc.index: czysty (2.0.66, 2.0.67 i 2.0.68 maja ten sam etc), z poprawka mgly, z mgla i znacznikiem
 		static readonly string[] KnownEtc = new string[] {
 			"3D5E1E22A73C42DAF0825A0D6BD311C8", "A748EC48CFD78076FEADF7AE2556EAB6", "1FCE8FCDF557EE4B25ABE32A2E2A0980" };
-		const string CleanGdIndex = "F723CD1B7E392EC6E55EF218DACA9585";
+		const string CleanGdIndex = "3028F9B6BB409FCBACAA814ECF8E5B8E";
 
 		const string ClientSave = "mt2009_mody.txt";
 		const string ServerSave = "mt2009_mody_serwer.txt";
@@ -377,16 +377,22 @@ namespace MT2009
 			CheckPkg(Path.Combine(kp, "root.data"), PkgRootData, "klient\\pack\\root.data");
 			Ok("Pliki paczki kompletne.");
 
+			// Wersja klienta z CLIENT_VERSION: starsza niz ta, na ktora jest paczka, nie jest obslugiwana
+			// (najpierw patcher), nowsza - tylko po pytaniu.
 			string ver = Path.Combine(client, "CLIENT_VERSION");
-			if (File.Exists(ver))
+			if (!File.Exists(ver)) throw new Exception("W " + client + " nie ma pliku CLIENT_VERSION - uruchom najpierw MT2009-Patcher.exe.");
+			string v = File.ReadAllText(ver).Trim();
+			Version cv;
+			try { cv = new Version(v); } catch (Exception) { throw new Exception("Nieczytelna wersja w CLIENT_VERSION: '" + v + "'."); }
+			int cmp = cv.CompareTo(new Version(ClientVersion));
+			if (cmp < 0)
+				throw new Exception("Klient " + v + " jest NIEAKTUALNY i nie jest obslugiwany - ta paczka jest na klienta " + ClientVersion + ". Zaktualizuj klienta programem MT2009-Patcher.exe.");
+			if (cmp > 0)
 			{
-				string v = File.ReadAllText(ver).Trim();
-				if (v != "2.0.67")
-				{
-					Warn("Klient ma wersje " + v + ", a mody sa zrobione na 2.0.67.");
-					if (!Yes("  Mimo to wgrac root 2.0.67 z modami? [t/N] > ")) throw new Exception("Przerwano.");
-				}
+				Warn("Klient ma wersje " + v + ", a mody sa zrobione na " + ClientVersion + " (potrzebna nowsza paczka).");
+				if (!Yes("  Mimo to wgrac root " + ClientVersion + " z modami? [t/N] > ")) throw new Exception("Przerwano.");
 			}
+			else Ok("Klient " + v + ".");
 
 			string saveFile = Path.Combine(client, ClientSave);
 			string pack = Path.Combine(client, "pack");
@@ -396,8 +402,8 @@ namespace MT2009
 			string have = Md5(rootIdx);
 			if (Array.IndexOf(KnownRoot, have) < 0 && have != SavedValue(saveFile, "root"))
 			{
-				Warn("pack\\root.index nie jest ani czystym 2.0.67, ani wersja z tej paczki (moze patcher wgral nowsza?).");
-				if (!Yes("  Zastapic go rootem 2.0.67 z wybranymi modami? [t/N] > ")) throw new Exception("Przerwano - nic nie zostalo zmienione.");
+				Warn("pack\\root.index nie jest ani czystym " + ClientVersion + ", ani wersja z tej paczki (moze patcher wgral nowsza?).");
+				if (!Yes("  Zastapic go rootem " + ClientVersion + " z wybranymi modami? [t/N] > ")) throw new Exception("Przerwano - nic nie zostalo zmienione.");
 			}
 			byte[] rootIndex = EncodeIndex(Apply(File.ReadAllBytes(Path.Combine(Pkg, "instalator\\root.base")),
 				Path.Combine(Pkg, "instalator\\root.var"), sel));
@@ -471,7 +477,7 @@ namespace MT2009
 				Done("11", "ikona 76009");
 			}
 			if (Directory.Exists(Path.Combine(pack, "root")))
-				Warn("Masz rozpakowany pack\\root - instalator go nie zmienia (pliki .py sa w MT2009_Luzne_pliki).");
+				Warn("Masz rozpakowany pack\\root - instalator go nie zmienia (pliki .py z modami sa w klient\\root w paczce).");
 
 			// FPS w exe (mod 01): wlaczany z 01, wylaczany, gdy 01 bylo, a teraz nie ma
 			string fpsSrc = Path.Combine(Pkg, "klient\\Ustaw_FPS.bat");
@@ -683,7 +689,7 @@ namespace MT2009
 						{
 							skipped++;
 							Say(ConsoleColor.Yellow, "  [POMINIETO] ", rel);
-							foreach (string m in sub) Fail(m, "plik " + rel + " pominiety (Twoje zmiany) - wgraj go recznie z MT2009_Luzne_pliki");
+							foreach (string m in sub) Fail(m, "plik " + rel + " pominiety (Twoje zmiany) - wgraj go recznie z serwer\\linux-port w paczce");
 							continue;
 						}
 					}

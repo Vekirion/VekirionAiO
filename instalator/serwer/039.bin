@@ -902,6 +902,16 @@ bool ITEM_MANAGER::GetDropPct(LPCHARACTER pkKiller, DWORD race, BYTE bMobRank, i
 	if (priv_item_bonus > 0)
 		AddToBonusItemDrop(item_drop_bonus, priv_item_bonus);
 
+	// MT2009_PLUS_GLOBAL_BONUS_V1 (drop): M2_BONUS_MODE=global - the double-item chance line of a bracelet or
+	// earrings (POINT_ITEM_DROP_BONUS) raises the chance as the lines above do (Tieru's 2.2.31;
+	// playerbot_bonus_mode.cpp - 0 in mt2009).
+	{
+		int BonusModeItemDropBonus(LPCHARACTER killer);
+		const int item_drop_line = BonusModeItemDropBonus(pkKiller);
+		if (item_drop_line > 0)
+			AddToBonusItemDrop(item_drop_bonus, item_drop_line);
+	}
+
 	//iDeltaPercent = iDeltaPercent * (100 + MIN(item_drop_bonus, 225)) / 100;
 	iDeltaPercent = iDeltaPercent * (100 + item_drop_bonus) / 100;
 

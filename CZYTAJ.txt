@@ -1,9 +1,22 @@
-﻿WERSJA: klient MT2009 PLUS 2.0.67, serwer MT2009-PLUS-Serwer-2.12.0 VERSION 2.36.0 (21.10.2026).
-Na starszym kliencie 2.0.66 / serwerze 2.35.0 użyj poprzedniej wersji paczki.
+﻿WERSJA 2.1.2: klient MT2009 PLUS 2.0.68, serwer MT2009 PLUS VERSION 2.37.0 (23.10.2026).
+Starsze wersje klienta (2.0.67 i niżej) są nieaktualne i nieobsługiwane – zaktualizuj klienta
+MT2009-Patcher.exe. Na kliencie 2.0.67 / serwerze 2.36.0 użyj poprzedniej wersji paczki (2.1.1).
+
+ZMIANY W 2.1.2
+------------
+- Mody przeniesione na klienta 2.0.68 i serwer 2.37.0 (bez konfliktów: game.py – mody 01, 02, 12, 26;
+  localeinfo.py – 25; item_manager.cpp – 23; pliki towarzysza – 26). gamedata z ikoną 76009 zrobiony
+  od nowa na gamedata 2.0.68. etc bez zmian.
+- Ustaw_FPS.bat czyta wersję z CLIENT_VERSION w folderze klienta (dawniej zawsze pisał 2.0.63)
+  i działa tylko na 2.0.68; starszą wersję zgłasza jako nieaktualną i nic nie zmienia.
+- Instalator: klient starszy niż 2.0.68 – instalacja przerwana (najpierw patcher).
+- Z paczki usunięte stare pliki usuniętych modów (uicube.py, uidpsmeter.py, cube.cpp,
+  char_battle.cpp, seon_pyeong_wymiana_item.quest) – przy ręcznym kopiowaniu nadpisywały pliki serwera.
 
 CO JEST W PACZCE
 ----------------
 01. FPS 60/120/144/240 – Opcje Gry > System > FPS (działa po łatce exe: Ustaw_FPS.bat).
+    Ustaw_FPS.bat sprawdza wersję klienta w CLIENT_VERSION – działa tylko na 2.0.68.
 02. Ruch bez zatrzymywania – po buffie, wsiadaniu na konia/mounta, po ciosie; też przy LPM.
     v2 (16.10): klawisz jest puszczany i wciskany ponownie (dawniej samo „wciśnij” exe często
     ignorował), a do tego: trzymany klawisz ruchu, a postać stoi 0,35 s – ruch jest wznawiany,
@@ -56,28 +69,27 @@ KLIENT
 Zamknij grę i patcher. Zrób kopię folderu pack.
   Sposób A (ręcznie): przeciągnij klient\pack na folder pack klienta i zgódź się na podmianę.
                       Potem klient\Ustaw_FPS.bat do folderu klienta, uruchom i wpisz 1.
-  Sposób B (instalator): Zainstaluj_klient.bat – kopia zapasowa, root, gamedata i etc (tylko
-                      gdy Twoje są w znanej wersji), łatka FPS.
+  Sposób B (wybrane mody): Wybierz_mody.bat – opis niżej.
 W klient\pack:
-  root.index/.data      – root klienta 2.0.67 + mody 01, 02, 03, 06, 11, 12, 18, 22, 25, 26
-  gamedata.index/.data  – ikona Wykrywacza Bossów (gamedata 2.0.66/2.0.67 + ikona; taki sam jak w 2.0.65)
-  etc.index/.data       – mgła + nowy znacznik (etc 2.0.66/2.0.67 + te zmiany; taki sam jak w 2.0.65)
+  root.index/.data      – root klienta 2.0.68 + mody 01, 02, 03, 06, 11, 12, 18, 22, 25, 26
+  gamedata.index/.data  – ikona Wykrywacza Bossów (gamedata 2.0.68 + ikona)
+  etc.index/.data       – mgła + nowy znacznik (etc 2.0.66–2.0.68 + te zmiany)
 klient\root\*.py – te same pliki luzem, dla klienta z ROZPAKOWANYM rootem (pack\root);
   instalator wgrywa je sam.
 
-SPOSÓB C – WYBIERZ_MODY.BAT (instalacja tylko wybranych modów)
+SPOSÓB B – WYBIERZ_MODY.BAT (instalacja tylko wybranych modów)
 --------------------------------------------------------------
 Wybierz_mody.bat pyta: klient / serwer / oba, potem pokazuje listę modów z [x]. Wpisujesz numery,
 żeby włączyć/wyłączyć (np. „03 22”), A = wszystkie, N = żaden, Enter = instaluj.
 Mody, które dzielą plik (np. game.py: 01, 02, 12, 26; char_item.cpp: 11, 12, 19, 28), łączy sam – każde połączenie jest
 gotowe w paczce (game.py ma 15 wariantów). Wyłączenie moda przy kolejnym uruchomieniu cofa go.
-  Klient: pack\root.index składa na nowo z czystego 2.0.67 i wybranych modów; root.data z paczki ma
+  Klient: pack\root.index składa na nowo z czystego 2.0.68 i wybranych modów; root.data z paczki ma
     w sobie każdy wariant każdego pliku, a gra czyta tylko to, na co
     wskazuje indeks. Tak samo etc (13, 14). gamedata (ikona 76009) – jak dotąd, gdy wybrano 11.
-    Sprawdza: wersję klienta (CLIENT_VERSION 2.0.67), czy root/etc są w znanej wersji (inaczej pyta),
+    Sprawdza: wersję klienta (CLIENT_VERSION 2.0.68; starszy klient – przerywa), czy root/etc są w znanej wersji (inaczej pyta),
     czy wszystkie 3 części zip są rozpakowane. Łatka FPS: z 01 włącza, bez 01 (gdy było) wyłącza.
     Wybór zapisuje w <klient>\mt2009_mody.txt – następnym razem lista startuje od niego.
-  Serwer: pliki z wybranymi modami albo czyste (2.36.0 / sprzed przebudowy
+  Serwer: pliki z wybranymi modami albo czyste (2.37.0 / sprzed przebudowy
     towarzysza). Plik, którego nie rozpoznaje (Twoje własne zmiany), nadpisuje tylko po pytaniu.
     Dopisuje locale_string (11), pyta o SQL 76009 i o przebudowanie.
   Wszystko, co podmienia, idzie najpierw do <folder>\backup_mody_<data>\.
@@ -85,10 +97,10 @@ gotowe w paczce (game.py ma 15 wariantów). Wyłączenie moda przy kolejnym uruc
     go w pamięci kompilatorem C# z .NET Framework) – bez pliku .exe, który Windows 11 (Smart App
     Control) blokował komunikatem „This app can't run on your PC”.
   UWAGA: nie mogłem go uruchomić na Windowsie – składanie indeksu sprawdziłem tylko tym samym
-    algorytmem w Pythonie (37 zestawów modów, dekodowanie przez liblzo2 i rozpakowanie packa).
+    algorytmem w Pythonie (wszystkie 1024 zestawy modów klienta, dekodowanie przez liblzo2 i rozpakowanie packa).
     Przy pierwszym użyciu zrób kopię folderu pack i sprawdź grę; w razie błędu przywróć z backup_mody_*.
 
-SERWER (MT2009-PLUS-Serwer-2.12.0)
+SERWER
 ------
   Sposób A (ręcznie):
     1. Przeciągnij serwer\linux-port na folder linux-port serwera. Podmienia w game\src:
@@ -97,7 +109,7 @@ SERWER (MT2009-PLUS-Serwer-2.12.0)
        26: input_login.cpp, playerbot_manager.cpp, playerbot_sidekick.h (też w overlays\playerbot\src\game\src),
        game\quest\towarzysz.quest, docker-compose.yml, .env.example, mariadb\playerbot\apply.sh
     2. Do docker\game\src\serverfiles\share\locale\poland\locale_string.txt dopisz na końcu
-       2 linie z serwer\wykrywacz\locale_string_dodatek.txt (w 2.12.0 ich nie ma).
+       2 linie z serwer\wykrywacz\locale_string_dodatek.txt (w czystym serwerze ich nie ma).
     3. Przedmiot 76009 – raz: serwer\wykrywacz\wykrywacz_bossow.sql do bazy (INSERT IGNORE –
        jeśli 76009 już jest w Twojej bazie, nic nie zmieni), potem w panelu (edytor bazy) przy
        76009: nazwa i opis wykrywacza, stackowanie włączone, blokada stacku zdjęta – jak poprzednio.
@@ -105,10 +117,7 @@ SERWER (MT2009-PLUS-Serwer-2.12.0)
          docker cp wykrywacz_bossow.sql metin2-db:/tmp/w.sql
          docker exec metin2-db sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" < /tmp/w.sql'
     4. docker compose up -d --build
-  Sposób B (instalator): Zainstaluj_serwer.bat – pyta o folder linux-port, kopia zapasowa,
-    kopiuje pliki, dopisuje locale_string, pyta o SQL
-    i przebudowanie. Pytanie o dane
-    klienta panelu (m2clientpack) – odpowiedz N.
+  Sposób B (wybrane mody): Wybierz_mody.bat, część „serwer” – opis wyżej.
 
-Uwaga: w 2.12.0 boty (playerbot_types.h) traktują vnum 76009 jako „Zwój Boga Smoków” (nie
+Uwaga: w serwerze MT2009 PLUS boty (playerbot_types.h) traktują vnum 76009 jako „Zwój Boga Smoków” (nie
 wyrzucają go i nie sprzedają). Wykrywaczowi to nie przeszkadza.
