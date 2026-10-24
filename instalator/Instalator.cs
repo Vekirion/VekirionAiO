@@ -30,20 +30,22 @@ namespace MT2009
 			new Mod("01", true, false, "FPS 60/120/144/240 (Opcje Gry > System) + latka exe"),
 			new Mod("02", true, false, "Ruch bez zatrzymywania (buff, kon/mount, cios, LPM)"),
 			new Mod("03", true, false, "Autolowy bez skakania miedzy celami przy scianach"),
-			new Mod("06", true, false, "Ctrl+PPM otwiera tez karty i skrzynki"),
-			new Mod("11", true, true,  "Wykrywacz Bossow 76009 + znaczniki na calej mapie"),
-			new Mod("12", true, true,  "Wykrywacz sam otwiera mape (wymaga 11)"),
-			new Mod("13", true, false, "Wyrazniejszy znacznik celu na mapie (pack etc)"),
-			new Mod("14", true, false, "Poprawka mgly na mapach (pack etc)"),
-			new Mod("18", true, true,  "Depozyt i stakowanie (sklepy offline / Dom Aukcyjny)"),
-			new Mod("19", false, true, "Przenoszenie przedmiotow przy otwartym sklepie"),
-			new Mod("22", true, false, "Mapa M w Czerwonym Lesie"),
-			new Mod("23", false, true, "Drop bez limitu poziomu"),
-			new Mod("25", true, false, "Puste kwadraty pod Proton/Wine (Steam Deck)"),
-			new Mod("26", true, true,  "Towarzysz - przebudowa (druzyna, lawka, Shift/Ctrl/Alt+P)"),
-			new Mod("27", false, true, "Bez kontroli speedhacka (ruch i szybkosc ataku)"),
-			new Mod("28", false, true, "Zwoje powrotu 5 min, biala flaga bez blokady, szybkie karty"),
-			new Mod("29", false, true, "Ulepszanie co 0,2 s zamiast co 1 s"),
+			new Mod("04", true, false, "Ctrl+PPM otwiera tez karty i skrzynki"),
+			new Mod("05", true, true,  "Wykrywacz Bossow 76009 + znaczniki na calej mapie"),
+			new Mod("06", true, true,  "Wykrywacz sam otwiera mape (wymaga 05)"),
+			new Mod("07", true, false, "Wyrazniejszy znacznik celu na mapie (pack etc)"),
+			new Mod("08", true, false, "Poprawka mgly na mapach (pack etc)"),
+			new Mod("09", true, true,  "Depozyt i stakowanie (sklepy offline / Dom Aukcyjny)"),
+			new Mod("10", false, true, "Przenoszenie przedmiotow przy otwartym sklepie"),
+			new Mod("11", true, false, "Mapa M w Czerwonym Lesie"),
+			new Mod("12", false, true, "Drop bez limitu poziomu"),
+			new Mod("13", true, false, "Puste kwadraty pod Proton/Wine (Steam Deck)"),
+			new Mod("14", true, true,  "Towarzysz - przebudowa (druzyna, lawka, Shift/Ctrl/Alt+P)"),
+			new Mod("15", false, true, "Bez kontroli speedhacka (ruch i szybkosc ataku)"),
+			new Mod("16", false, true, "Zwoje powrotu 5 min, biala flaga bez blokady, szybkie karty"),
+			new Mod("17", false, true, "Ulepszanie co 0,2 s zamiast co 1 s"),
+			new Mod("18", false, true, "Nieodpychanie bossow"),
+			new Mod("19", false, true, "Nieodpychanie mobow (wszystkich)"),
 		};
 
 		// wersja klienta, na ktora jest ta paczka (CLIENT_VERSION)
@@ -54,8 +56,8 @@ namespace MT2009
 		// klient\pack z paczki (sprawdzenie, czy wszystkie czesci zip sa rozpakowane)
 		const string PkgRootData = "00C779A113C6EAB85ABCE30A5C9891A4";
 		const string PkgEtcData = "BA9319906DA1F1EED275A6315FBFEAD4";
-		const string PkgGdIndex = "0E10A126D0B47073C1D95C811A14C974";
-		const string PkgGdData = "9ADD967DADB799FEC4C029F4FF13F08F";
+		const string PkgGdIndex = "4BE217B51149B21DC41B7FE16B944759";
+		const string PkgGdData = "AB3E2DF3123FFC29A1DC3966ABFAA201";
 		// root.index, nad ktorym wolno pracowac bez pytania: czysty 2.0.68 i ta paczka (2.0.68, wszystkie mody).
 		// Inny zestaw modow z tej paczki rozpoznaje po root= w mt2009_mody.txt.
 		static readonly string[] KnownRoot = new string[] {
@@ -64,6 +66,9 @@ namespace MT2009
 		static readonly string[] KnownEtc = new string[] {
 			"3D5E1E22A73C42DAF0825A0D6BD311C8", "A748EC48CFD78076FEADF7AE2556EAB6", "1FCE8FCDF557EE4B25ABE32A2E2A0980" };
 		const string CleanGdIndex = "3028F9B6BB409FCBACAA814ECF8E5B8E";
+		// gamedata z pierwszego wydania 2.1.2: ikona byla, ale item_list.txt nie wskazywal na nia
+		// (76009 mial ikone Zwoju Boga Smokow) - podmieniany jak czysty
+		const string BadGdIndex = "0E10A126D0B47073C1D95C811A14C974";
 
 		const string ClientSave = "mt2009_mody.txt";
 		const string ServerSave = "mt2009_mody_serwer.txt";
@@ -239,11 +244,13 @@ namespace MT2009
 			Clear();
 			Title("Podsumowanie wyboru");
 			Console.WriteLine();
-			if (sel.Contains("12") && !sel.Contains("11"))
+			if (sel.Contains("06") && !sel.Contains("05"))
 			{
-				sel.Add("11");
-				Warn("Mod 12 wymaga moda 11 - wlaczono tez 11.");
+				sel.Add("05");
+				Warn("Mod 06 wymaga moda 05 - wlaczono tez 05.");
 			}
+			if (sel.Contains("18") && sel.Contains("19"))
+				Info("Mod 19 obejmuje tez bossow - z 18 i 19 serwer dostaje wersje z 19.");
 			List<Mod> on = new List<Mod>(), off = new List<Mod>();
 			foreach (Mod m in list) if (sel.Contains(m.Id)) on.Add(m); else off.Add(m);
 			Console.WriteLine("  Zostana zainstalowane (" + on.Count + "):");
@@ -259,10 +266,10 @@ namespace MT2009
 					Say(was ? ConsoleColor.Yellow : ConsoleColor.DarkGray, was ? "    - " : "      ", m.Id + "  " + m.Nazwa + (was ? "   <- zostanie USUNIETY" : ""));
 				}
 			}
-			if (!sel.Contains("26"))
+			if (!sel.Contains("14"))
 			{
 				Console.WriteLine();
-				Warn("Bez 26 wraca stary towarzysz. Klient i serwer musza miec 26 oba albo zaden.");
+				Warn("Bez 14 wraca stary towarzysz. Klient i serwer musza miec 14 oba albo zaden.");
 			}
 			Console.WriteLine();
 			string ok = Ask("  Instalowac? [T/n] > ");
@@ -318,17 +325,34 @@ namespace MT2009
 			return 0;
 		}
 
+		// Numery modow do paczki 2.1.2 (stare) -> od 2.2.1 (po kolei). Plik wyboru bez linii
+		// "numeracja=2" jest ze starej paczki - jego numery sa zamieniane na nowe.
+		static readonly string[,] StareNumery = new string[,] {
+			{ "06", "04" }, { "11", "05" }, { "12", "06" }, { "13", "07" }, { "14", "08" }, { "18", "09" },
+			{ "19", "10" }, { "22", "11" }, { "23", "12" }, { "25", "13" }, { "26", "14" }, { "27", "15" },
+			{ "28", "16" }, { "29", "17" } };
+
 		static HashSet<string> LoadSaved(string path)
 		{
 			if (!File.Exists(path)) return null;
+			bool nowe = false;
+			string mody = null;
 			foreach (string l in File.ReadAllLines(path))
-				if (l.StartsWith("mody="))
-				{
-					HashSet<string> s = new HashSet<string>();
-					foreach (string t in l.Substring(5).Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries)) s.Add(t.Trim());
-					return s;
-				}
-			return null;
+			{
+				if (l.Trim() == "numeracja=2") nowe = true;
+				if (l.StartsWith("mody=") && mody == null) mody = l.Substring(5);
+			}
+			if (mody == null) return null;
+			HashSet<string> s = new HashSet<string>();
+			foreach (string t in mody.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
+			{
+				string id = t.Trim();
+				if (!nowe)
+					for (int i = 0; i < StareNumery.GetLength(0); i++)
+						if (StareNumery[i, 0] == id) { id = StareNumery[i, 1]; break; }
+				s.Add(id);
+			}
+			return s;
 		}
 
 		static string SavedValue(string path, string key)
@@ -424,31 +448,31 @@ namespace MT2009
 				}
 				else
 				{
-					if (sel.Contains("13") || sel.Contains("14")) Warn("pack\\etc w nieznanej wersji - mody 13 i 14 nie zostana wgrane.");
-					if (sel.Contains("13")) Fail("13", "pack\\etc w nieznanej wersji - pominiety");
-					if (sel.Contains("14")) Fail("14", "pack\\etc w nieznanej wersji - pominiety");
+					if (sel.Contains("07") || sel.Contains("08")) Warn("pack\\etc w nieznanej wersji - mody 07 i 08 nie zostana wgrane.");
+					if (sel.Contains("07")) Fail("07", "pack\\etc w nieznanej wersji - pominiety");
+					if (sel.Contains("08")) Fail("08", "pack\\etc w nieznanej wersji - pominiety");
 				}
 			}
 			else
 			{
-				if (sel.Contains("13")) Fail("13", "brak pack\\etc.index w kliencie");
-				if (sel.Contains("14")) Fail("14", "brak pack\\etc.index w kliencie");
+				if (sel.Contains("07")) Fail("07", "brak pack\\etc.index w kliencie");
+				if (sel.Contains("08")) Fail("08", "brak pack\\etc.index w kliencie");
 			}
 
 			// gamedata (ikona 76009)
 			bool doGd = false;
 			string gdIdx = Path.Combine(pack, "gamedata.index");
-			if (sel.Contains("11") && File.Exists(gdIdx))
+			if (sel.Contains("05") && File.Exists(gdIdx))
 			{
 				string g = Md5(gdIdx);
-				if (g == PkgGdIndex) Done("11", "ikona 76009 juz byla");
-				else if (g == CleanGdIndex)
+				if (g == PkgGdIndex) Done("05", "ikona 76009 juz byla");
+				else if (g == CleanGdIndex || g == BadGdIndex)
 				{
 					CheckPkg(Path.Combine(kp, "gamedata.index"), PkgGdIndex, "klient\\pack\\gamedata");
 					CheckPkg(Path.Combine(kp, "gamedata.data"), PkgGdData, "klient\\pack\\gamedata");
 					doGd = true;
 				}
-				else { Warn("pack\\gamedata w nieznanej wersji - bez nowej ikony 76009 (wykrywacz dziala)."); Done("11", "bez nowej ikony - gamedata w innej wersji"); }
+				else { Warn("pack\\gamedata w nieznanej wersji - bez nowej ikony 76009 (wykrywacz dziala)."); Done("05", "bez nowej ikony - gamedata w innej wersji"); }
 			}
 
 			// kopia zapasowa, potem zapis
@@ -460,21 +484,21 @@ namespace MT2009
 
 			File.Copy(Path.Combine(kp, "root.data"), Path.Combine(pack, "root.data"), true);
 			File.WriteAllBytes(rootIdx, rootIndex);
-			Ok("pack\\root wgrany (mody: " + ClientMods(sel, "01 02 03 06 11 12 18 22 25 26") + ").");
-			foreach (string id in "01 02 03 06 11 12 18 22 25 26".Split(' ')) if (sel.Contains(id)) Done(id, "klient");
+			Ok("pack\\root wgrany (mody: " + ClientMods(sel, "01 02 03 04 05 06 09 11 13 14") + ").");
+			foreach (string id in "01 02 03 04 05 06 09 11 13 14".Split(' ')) if (sel.Contains(id)) Done(id, "klient");
 			if (doEtc)
 			{
 				File.Copy(Path.Combine(kp, "etc.data"), Path.Combine(pack, "etc.data"), true);
 				File.WriteAllBytes(etcIdx, etcIndex);
-				Ok("pack\\etc wgrany (mody: " + ClientMods(sel, "13 14") + ").");
-				foreach (string id in new string[] { "13", "14" }) if (sel.Contains(id)) Done(id, "klient");
+				Ok("pack\\etc wgrany (mody: " + ClientMods(sel, "07 08") + ").");
+				foreach (string id in new string[] { "07", "08" }) if (sel.Contains(id)) Done(id, "klient");
 			}
 			if (doGd)
 			{
 				File.Copy(Path.Combine(kp, "gamedata.index"), gdIdx, true);
 				File.Copy(Path.Combine(kp, "gamedata.data"), Path.Combine(pack, "gamedata.data"), true);
 				Ok("pack\\gamedata wgrany (ikona Wykrywacza Bossow 76009).");
-				Done("11", "ikona 76009");
+				Done("05", "ikona 76009");
 			}
 			if (Directory.Exists(Path.Combine(pack, "root")))
 				Warn("Masz rozpakowany pack\\root - instalator go nie zmienia (pliki .py z modami sa w klient\\root w paczce).");
@@ -503,6 +527,7 @@ namespace MT2009
 
 			StringBuilder sb = new StringBuilder();
 			sb.Append("mody=" + Joined(sel) + "\r\n");
+			sb.Append("numeracja=2\r\n");
 			sb.Append("root=" + Md5(rootIdx) + "\r\n");
 			if (File.Exists(etcIdx)) sb.Append("etc=" + Md5(etcIdx) + "\r\n");
 			sb.Append("data=" + DateTime.Now.ToString("yyyy-MM-dd HH:mm") + "\r\n");
@@ -704,8 +729,8 @@ namespace MT2009
 			Console.WriteLine();
 			Console.WriteLine(string.Format("  Pliki serwera: wgrane {0}, juz aktualne {1}, pominiete {2}.", changed, same, skipped));
 
-			if (sel.Contains("11")) LocaleString(lp);
-			if (sel.Contains("11"))
+			if (sel.Contains("05")) LocaleString(lp);
+			if (sel.Contains("05"))
 			{
 				Console.WriteLine();
 				if (Yes("  Dodac przedmiot 76009 do bazy teraz (docker, INSERT IGNORE)? [t/N] > "))
@@ -716,18 +741,19 @@ namespace MT2009
 					if (Run("docker", "cp \"" + sql + "\" " + db + ":/tmp/wykrywacz_bossow.sql", lp) != 0
 						|| Run("docker", "exec " + db + " sh -c \"mariadb -uroot -p\\\"$MARIADB_ROOT_PASSWORD\\\" < /tmp/wykrywacz_bossow.sql\"", lp) != 0)
 						Warn("Nie udalo sie dodac 76009 do bazy - dodaj recznie serwer\\wykrywacz\\wykrywacz_bossow.sql.");
-					else { Ok("Przedmiot 76009 jest w bazie."); Done("11", "76009 w bazie"); }
+					else { Ok("Przedmiot 76009 jest w bazie."); Done("05", "76009 w bazie"); }
 				}
 			}
-			if (sel.Contains("26"))
+			if (sel.Contains("14"))
 			{
 				Console.WriteLine();
-				Warn("26 (towarzysz): przed pierwszym startem zrob kopie tabel towarzysza:");
+				Warn("14 (towarzysz): przed pierwszym startem zrob kopie tabel towarzysza:");
 				Console.WriteLine("  mysqldump player playerbot_sidekick playerbot_sidekick_gift playerbot_sidekick_pin > sidekick_backup.sql");
 				Console.WriteLine("  Migracja bazy robi sie sama przy starcie. Limity w docker\\.env: M2_SIDEKICK_MAX_ACTIVE=2, M2_SIDEKICK_ROSTER=4.");
 			}
 			StringBuilder sb = new StringBuilder();
 			sb.Append("mody=" + Joined(sel) + "\r\n");
+			sb.Append("numeracja=2\r\n");
 			sb.Append("data=" + DateTime.Now.ToString("yyyy-MM-dd HH:mm") + "\r\n");
 			File.WriteAllText(Path.Combine(lp, ServerSave), sb.ToString(), Latin);
 			if (Directory.Exists(Backup)) Ok("Kopia zapasowa: " + Backup);

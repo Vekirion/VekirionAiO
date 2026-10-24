@@ -1,17 +1,38 @@
-﻿WERSJA 2.1.2: klient MT2009 PLUS 2.0.68, serwer MT2009 PLUS VERSION 2.37.0 (23.10.2026).
+﻿WERSJA 2.2.2: klient MT2009 PLUS 2.0.68, serwer MT2009 PLUS VERSION 2.37.1 (23.10.2026).
 Starsze wersje klienta (2.0.67 i niżej) są nieaktualne i nieobsługiwane – zaktualizuj klienta
-MT2009-Patcher.exe. Na kliencie 2.0.67 / serwerze 2.36.0 użyj poprzedniej wersji paczki (2.1.1).
+MT2009-Patcher.exe. Na kliencie 2.0.67 / serwerze 2.36.0 użyj paczki 2.1.1, na serwerze 2.37.0 – paczki 2.2.1.
+
+NUMERACJA WERSJI: poprawki podnoszą ostatnią cyfrę (2.1.1 -> 2.1.2), nowe funkcje środkową
+(2.1.x -> 2.2.1).
+
+ZMIANY W 2.2.2
+--------------
+- Mody przeniesione na serwer 2.37.1 (klient bez zmian – dalej 2.0.68). Z plików modów serwer
+  2.37.1 zmienił tylko playerbot_manager.cpp (mod 14, też kopia w overlays) – połączone bez konfliktów.
+- CZYTAJ.txt bez podwójnego znacznika BOM na początku.
+
+ZMIANY W 2.2.1
+--------------
+- Nowe mody (serwer): 18. Nieodpychanie bossów, 19. Nieodpychanie mobów (wszystkich).
+- Mody mają nowe numery – po kolei, bez przerw:
+    stary -> nowy:  01->01  02->02  03->03  06->04  11->05  12->06  13->07  14->08  18->09
+                    19->10  22->11  23->12  25->13  26->14  27->15  28->16  29->17
+  Instalator sam przelicza zapisany wybór ze starej paczki (mt2009_mody.txt,
+  mt2009_mody_serwer.txt) na nowe numery.
 
 ZMIANY W 2.1.2
-------------
-- Mody przeniesione na klienta 2.0.68 i serwer 2.37.0 (bez konfliktów: game.py – mody 01, 02, 12, 26;
-  localeinfo.py – 25; item_manager.cpp – 23; pliki towarzysza – 26). gamedata z ikoną 76009 zrobiony
+--------------
+- Mody przeniesione na klienta 2.0.68 i serwer 2.37.0 (bez konfliktów: game.py – mody 01, 02, 06, 14;
+  localeinfo.py – 13; item_manager.cpp – 12; pliki towarzysza – 14). gamedata z ikoną 76009 zrobiony
   od nowa na gamedata 2.0.68. etc bez zmian.
+  Poprawka (23.10): w item_list.txt przedmiot 76009 wskazuje teraz ikonę Wykrywacza Bossów
+  (wcześniej pokazywał się ze starą ikoną Zwoju Boga Smoków).
 - Ustaw_FPS.bat czyta wersję z CLIENT_VERSION w folderze klienta (dawniej zawsze pisał 2.0.63)
   i działa tylko na 2.0.68; starszą wersję zgłasza jako nieaktualną i nic nie zmienia.
 - Instalator: klient starszy niż 2.0.68 – instalacja przerwana (najpierw patcher).
 - Z paczki usunięte stare pliki usuniętych modów (uicube.py, uidpsmeter.py, cube.cpp,
-  char_battle.cpp, seon_pyeong_wymiana_item.quest) – przy ręcznym kopiowaniu nadpisywały pliki serwera.
+  stary char_battle.cpp, seon_pyeong_wymiana_item.quest) – przy ręcznym kopiowaniu nadpisywały
+  pliki serwera.
 
 CO JEST W PACZCE
 ----------------
@@ -25,53 +46,66 @@ CO JEST W PACZCE
     (ime.IsCaptureInput) bez żadnego pola do pisania – poprawka czekała na koniec pisania.
     Teraz liczy się, czy wciśnięcie klawisza ruchu trafiło do gry.
 03. Autołowy bez skakania między celami przy ścianach.
-06. Ctrl+PPM otwiera też karty/skrzynki 50283, 50284, 79604, 79506, 79508.
-11. Wykrywacz Bossów (przedmiot 76009) i zmiany wykrywacza metinów
+04. Ctrl+PPM otwiera też karty/skrzynki 50283, 50284, 79604, 79506, 79508.
+05. Wykrywacz Bossów (przedmiot 76009) i zmiany wykrywacza metinów
     v2 (16.10): znacznik metina/bossa widać na mapie i minimapie w całej mapie, nie tylko
     w zasięgu widzenia (serwer: target.cpp – znacznik wysyłany jako miejsce, serwer dalej
-    śledzi cel i usuwa znacznik, gdy cel zginie).
-12. Wykrywacz (metinów i bossów) sam otwiera mapę – do wyłączenia w Opcje Gry > Dodatkowe.
-13. Wyraźniejszy znacznik celu na minimapie i mapie (dotyczy też celów z questów).
-14. Mgła na mapach (poprawka msenv).
-18. Depozyt i stakowanie (Dom Aukcyjny / sklepy offline): kupione przedmioty dokładają się do
+    śledzi cel i usuwa znacznik, gdy cel zginie). Dotyczy też wykrywaczy metinów 27989 i 76006.
+06. Wykrywacz (metinów i bossów) sam otwiera mapę – do wyłączenia w Opcje Gry > Dodatkowe.
+    Wymaga 05.
+07. Wyraźniejszy znacznik celu na minimapie i mapie (dotyczy też celów z questów).
+08. Mgła na mapach (poprawka msenv).
+09. Depozyt i stakowanie (Dom Aukcyjny / sklepy offline): kupione przedmioty dokładają się do
     stosów w ekwipunku; w oknie własnego sklepu przycisk „Depozyt (N)” – jedno kliknięcie
     przenosi depozyt do ekwipunku. Serwer: ikarus_shop_manager.cpp, auction_house.cpp,
     input_main.cpp (włączona obsługa pakietu depozytu – brak powodował „lag” i nic nie wydawał).
-19. Przenoszenie i dzielenie stosów w ekwipunku przy otwartym cudzym sklepie, Domu Aukcyjnym
+10. Przenoszenie i dzielenie stosów w ekwipunku przy otwartym cudzym sklepie, Domu Aukcyjnym
     i sklepie NPC (serwer, char_item.cpp). Zakładanie/zdejmowanie nadal zablokowane.
-22. Duża mapa (M) w Czerwonym Lesie: klient blokował ją tam wszystkim poza GM-em (uiminimap.py).
-23. Drop bez limitu poziomu (serwer, item_manager.cpp; tylko gracze, boty bez zmian): zwykły drop
+11. Duża mapa (M) w Czerwonym Lesie: klient blokował ją tam wszystkim poza GM-em (uiminimap.py).
+12. Drop bez limitu poziomu (serwer, item_manager.cpp; tylko gracze, boty bez zmian): zwykły drop
     nie spada z różnicą poziomów, gwarantowana księga i Zwój Błogosławieństwa z metina,
     Cor Draconis i szarfy bez limitu 15 poziomów. Doświadczenie i yang bez zmian.
-25. Puste kwadraty na końcu napisów pod Protonem / Wine (Steam Deck): pliki tekstów miały windowsowe
+13. Puste kwadraty na końcu napisów pod Protonem / Wine (Steam Deck): pliki tekstów miały windowsowe
     końce linii i w tekstach zostawał znak \r (localeinfo.py, uiscriptlocale.py).
-26. Towarzysz – przebudowa: szybsze dołączanie
+14. Towarzysz – przebudowa: szybsze dołączanie
     po logowaniu i zmianie CH, Shift+P plecak, Ctrl+P efekty towarzysza, Alt+P drużyna i ławka,
     kilku towarzyszy naraz (M2_SIDEKICK_MAX_ACTIVE=2, M2_SIDEKICK_ROSTER=4), portrety nad oknem P.
     Klient: game.py, keybind.py, sidekickcollision.py, uisidekick.py + nowe uisidekickaffects.py,
     uisidekickroster.py. Serwer: input_login.cpp, playerbot_manager.cpp, playerbot_sidekick.h
     (+ kopie w overlays\playerbot\src\game\src), quest towarzysz.quest, docker-compose.yml,
     .env.example, mariadb\playerbot\apply.sh.
-    Klient i serwer muszą mieć 26 oba albo żaden.
+    Klient i serwer muszą mieć 14 oba albo żaden.
     21.10: poprawione uisidekickaffects.py i uisidekickroster.py
-27. Bez kontroli speedhacka: input_main.cpp – bez cofania przy
+15. Bez kontroli speedhacka: input_main.cpp – bez cofania przy
     rozjeździe pozycji, bez „trying to move too far”/SYNC_HACK, bez kontroli szybkości ruchu co 1,5 s,
     zegara klienta i tempa combo (przełącznik #define MT2009_PLUS_NO_SPEEDHACK_CHECK); battle.cpp –
     IS_SPEED_HACK() zawsze false. Chodzenie przez ściany dalej zablokowane.
-28. Zwoje powrotu, biała flaga, karty (serwer, char_item.cpp; Twój mod scroll_whiteflag_cooldown...):
+16. Zwoje powrotu, biała flaga, karty (serwer, char_item.cpp; Twój mod scroll_whiteflag_cooldown...):
     zwoje z zapisaną pozycją (22001, 22010…) – odczekanie 5 min zamiast 15; Biała Flaga (70008) bez
     blokady 3 min; karty potworów 50283 i 50284 liczone jak skrzynki (do 60 użyć na 500 ms – szybkie
-    otwieranie Ctrl+PPM z modu 06).
-29. Ulepszanie co 0,2 s zamiast co 1 s – podwójne kliknięcie dalej nie ulepsza dwa razy.
+    otwieranie Ctrl+PPM z modu 04).
+17. Ulepszanie co 0,2 s zamiast co 1 s – podwójne kliknięcie dalej nie ulepsza dwa razy.
+18. Nieodpychanie bossów (serwer: char.cpp, char_skill.cpp; marker MT2009_PLUS_BOSS_NOPUSH_V2).
+    Czysty serwer już nie pozwala odepchnąć bossa skillami (IsResistPush), ale boss dalej
+    „odjeżdżał” po ciosie na ekranie atakującego i wracał przy kolejnym kroku, a jego skille
+    odpychały gracza. Teraz:
+    - boss nie dostaje „właściciela ruchu” (sync owner), więc klient atakującego go nie przesuwa –
+      tak jak drzewa (Trent);
+    - skille bossa nie odpychają gracza.
+19. Nieodpychanie mobów (wszystkich) (serwer: char.cpp, char_skill.cpp, char_battle.cpp; marker
+    MT2009_PLUS_MOB_NOPUSH_V1). To samo co 18, ale dla każdego potwora:
+    - żaden potwór nie odlatuje od ciosów i skilli gracza (też od strzału łucznika na koniu);
+    - skille żadnego potwora nie odpychają gracza.
+    19 obejmuje 18 – wystarczy wybrać jeden z nich (gdy wybierzesz oba, serwer dostaje wersję z 19).
 
-KLIENT 
+KLIENT
 ------
 Zamknij grę i patcher. Zrób kopię folderu pack.
   Sposób A (ręcznie): przeciągnij klient\pack na folder pack klienta i zgódź się na podmianę.
                       Potem klient\Ustaw_FPS.bat do folderu klienta, uruchom i wpisz 1.
   Sposób B (wybrane mody): Wybierz_mody.bat – opis niżej.
 W klient\pack:
-  root.index/.data      – root klienta 2.0.68 + mody 01, 02, 03, 06, 11, 12, 18, 22, 25, 26
+  root.index/.data      – root klienta 2.0.68 + mody 01, 02, 03, 04, 05, 06, 09, 11, 13, 14
   gamedata.index/.data  – ikona Wykrywacza Bossów (gamedata 2.0.68 + ikona)
   etc.index/.data       – mgła + nowy znacznik (etc 2.0.66–2.0.68 + te zmiany)
 klient\root\*.py – te same pliki luzem, dla klienta z ROZPAKOWANYM rootem (pack\root);
@@ -80,18 +114,19 @@ klient\root\*.py – te same pliki luzem, dla klienta z ROZPAKOWANYM rootem (pac
 SPOSÓB B – WYBIERZ_MODY.BAT (instalacja tylko wybranych modów)
 --------------------------------------------------------------
 Wybierz_mody.bat pyta: klient / serwer / oba, potem pokazuje listę modów z [x]. Wpisujesz numery,
-żeby włączyć/wyłączyć (np. „03 22”), A = wszystkie, N = żaden, Enter = instaluj.
-Mody, które dzielą plik (np. game.py: 01, 02, 12, 26; char_item.cpp: 11, 12, 19, 28), łączy sam – każde połączenie jest
-gotowe w paczce (game.py ma 15 wariantów). Wyłączenie moda przy kolejnym uruchomieniu cofa go.
+żeby włączyć/wyłączyć (np. „03 11”), A = wszystkie, N = żaden, Enter = instaluj.
+Mody, które dzielą plik (np. game.py: 01, 02, 06, 14; char_item.cpp: 05, 06, 10, 16; char.cpp: 18, 19),
+łączy sam – każde połączenie jest gotowe w paczce (game.py ma 15 wariantów). Wyłączenie moda przy
+kolejnym uruchomieniu cofa go.
   Klient: pack\root.index składa na nowo z czystego 2.0.68 i wybranych modów; root.data z paczki ma
     w sobie każdy wariant każdego pliku, a gra czyta tylko to, na co
-    wskazuje indeks. Tak samo etc (13, 14). gamedata (ikona 76009) – jak dotąd, gdy wybrano 11.
+    wskazuje indeks. Tak samo etc (07, 08). gamedata (ikona 76009) – jak dotąd, gdy wybrano 05.
     Sprawdza: wersję klienta (CLIENT_VERSION 2.0.68; starszy klient – przerywa), czy root/etc są w znanej wersji (inaczej pyta),
     czy wszystkie 3 części zip są rozpakowane. Łatka FPS: z 01 włącza, bez 01 (gdy było) wyłącza.
     Wybór zapisuje w <klient>\mt2009_mody.txt – następnym razem lista startuje od niego.
-  Serwer: pliki z wybranymi modami albo czyste (2.37.0 / sprzed przebudowy
+  Serwer: pliki z wybranymi modami albo czyste (2.37.1 / sprzed przebudowy
     towarzysza). Plik, którego nie rozpoznaje (Twoje własne zmiany), nadpisuje tylko po pytaniu.
-    Dopisuje locale_string (11), pyta o SQL 76009 i o przebudowanie.
+    Dopisuje locale_string (05), pyta o SQL 76009 i o przebudowanie.
   Wszystko, co podmienia, idzie najpierw do <folder>\backup_mody_<data>\.
   Jak działa: Wybierz_mody.bat uruchamia instalator\Instalator.cs przez PowerShell (Add-Type kompiluje
     go w pamięci kompilatorem C# z .NET Framework) – bez pliku .exe, który Windows 11 (Smart App
@@ -102,11 +137,12 @@ gotowe w paczce (game.py ma 15 wariantów). Wyłączenie moda przy kolejnym uruc
 
 SERWER
 ------
-  Sposób A (ręcznie):
+  Sposób A (ręcznie, wszystkie mody serwera):
     1. Przeciągnij serwer\linux-port na folder linux-port serwera. Podmienia w game\src:
-       char_item.cpp (11, 12, 19, 28), target.cpp (11), ikarus_shop_manager.cpp, auction_house.cpp (18),
-       input_main.cpp (18, 27, 29), battle.cpp (27), item_manager.cpp (23).
-       26: input_login.cpp, playerbot_manager.cpp, playerbot_sidekick.h (też w overlays\playerbot\src\game\src),
+       char_item.cpp (05, 06, 10, 16), target.cpp (05), ikarus_shop_manager.cpp, auction_house.cpp (09),
+       input_main.cpp (09, 15, 17), battle.cpp (15), item_manager.cpp (12),
+       char.cpp, char_skill.cpp, char_battle.cpp (19 – obejmuje 18).
+       14: input_login.cpp, playerbot_manager.cpp, playerbot_sidekick.h (też w overlays\playerbot\src\game\src),
        game\quest\towarzysz.quest, docker-compose.yml, .env.example, mariadb\playerbot\apply.sh
     2. Do docker\game\src\serverfiles\share\locale\poland\locale_string.txt dopisz na końcu
        2 linie z serwer\wykrywacz\locale_string_dodatek.txt (w czystym serwerze ich nie ma).
