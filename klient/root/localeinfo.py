@@ -109,6 +109,13 @@ def IsWE_KOREA():
 # SUPPORT_NEW_KOREA_SERVER
 def LoadLocaleData():
 	app.LoadLocaleData(app.GetLocalePath())
+	# MT2009_PLUS_GLOBAL_PROTO_V2: the item table is the base (mt2009) one again - the next "BonusMode 1" loads
+	# the global records back over it (protoglobal.py)
+	try:
+		import protoglobal
+		protoglobal.BaseTableReloaded()
+	except Exception:
+		pass
 
 def IsCHEONMA():
 	return IsYMIR()
@@ -500,6 +507,9 @@ GUILDWAR_WARP_DESCLIST = [GUILD_WAR_USE_BATTLE_MAP, GUILD_WAR_WIN_WIPE_OUT_GUILD
 GUILDWAR_CTF_DESCLIST = [GUILD_WAR_USE_BATTLE_MAP, GUILD_WAR_WIN_TAKE_AWAY_FLAG1, GUILD_WAR_WIN_TAKE_AWAY_FLAG2]
 
 MINIMAP_ZONE_NAME_DICT = {
+	# MT2009_PLUS_MAPS_WZ_V1 (client): Wê¿owe Pole (80) and Kraina Gigantów (70) - their own folders
+	"metin2_map_snakefield" : "Wê¿owe Pole",
+	"metin2_map_giantland" : "Kraina Gigantów",
 	"metin2_map_a1"  : MAP_A1,
 	"map_a2"         : MAP_A2,
 	"metin2_map_a3"  : MAP_A3,

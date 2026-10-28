@@ -20,7 +20,7 @@ $ErrorActionPreference = 'Stop'
 # is read from CLIENT_VERSION in the client folder. Older versions are out of date
 # (update the client with MT2009-Patcher.exe), newer ones need a newer package.
 try {
-	$supported = '2.0.68'
+	$supported = '2.0.70'
 
 	$dir = Split-Path -Parent $env:M2_SELF
 	$exe = Join-Path $dir 'metin2client.exe'
@@ -41,8 +41,8 @@ try {
 	}
 	if (Get-Process metin2client -ErrorAction SilentlyContinue) { throw 'Najpierw zamknij gre (metin2client).' }
 
-	# (file offset, original bytes, patched bytes) of the 2.0.68 exe (the same exe as in
-	# 2.0.63-2.0.67); 'cam' is the camera byte (app.SetCameraSpeed leaves the mouse
+	# (file offset, original bytes, patched bytes) of the 2.0.70 exe (the same exe as in
+	# 2.0.63-2.0.68); 'cam' is the camera byte (app.SetCameraSpeed leaves the mouse
 	# sensitivity alone, so root's updateable.py can slow the camera keys down to the
 	# 60 FPS speed) - an exe patched by a very old .bat has every block but that one.
 	$cam = 0x284eee

@@ -1,7 +1,7 @@
 // MT2009 Plus - instalator z wyborem modow (Wybierz_mody.bat kompiluje ten plik).
 // C# 5 / .NET Framework 4 (csc.exe z Windowsa albo Add-Type w PowerShellu).
 //
-// KLIENT: pack\root.index jest skladany na nowo z czystego indeksu klienta 2.0.68
+// KLIENT: pack\root.index jest skladany na nowo z czystego indeksu klienta 2.0.70
 // (instalator\root.base) i rekordow wybranych modow (instalator\root.var). Dane
 // (klient\pack\root.data z paczki) maja w sobie kazdy wariant kazdego pliku, wiec
 // root.data jest zawsze ten sam, a o tym, ktore pliki gra czyta, decyduje tylko indeks.
@@ -46,29 +46,31 @@ namespace MT2009
 			new Mod("17", false, true, "Ulepszanie co 0,2 s zamiast co 1 s"),
 			new Mod("18", false, true, "Nieodpychanie bossow"),
 			new Mod("19", false, true, "Nieodpychanie mobow (wszystkich)"),
+			new Mod("20", false, true, "Kupowanie ze stosow (boty kupia czesc stosu taniej)"),
 		};
 
 		// wersja klienta, na ktora jest ta paczka (CLIENT_VERSION)
-		const string ClientVersion = "2.0.68";
+		const string ClientVersion = "2.0.70";
 
 		static readonly uint[] IndexKey = new uint[] { 533489241, 64592187, 413438084, 181131063 };
 
 		// klient\pack z paczki (sprawdzenie, czy wszystkie czesci zip sa rozpakowane)
-		const string PkgRootData = "00C779A113C6EAB85ABCE30A5C9891A4";
+		const string PkgRootData = "7859602B57929FF9615F4A287E76B1D0";
 		const string PkgEtcData = "BA9319906DA1F1EED275A6315FBFEAD4";
-		const string PkgGdIndex = "4BE217B51149B21DC41B7FE16B944759";
-		const string PkgGdData = "AB3E2DF3123FFC29A1DC3966ABFAA201";
-		// root.index, nad ktorym wolno pracowac bez pytania: czysty 2.0.68 i ta paczka (2.0.68, wszystkie mody).
+		const string PkgGdIndex = "70B23A9B350E2719CB3D50E4C0C35A4D";
+		const string PkgGdData = "ED5F7419B5740DF83DD2D7D544F79B69";
+		// root.index, nad ktorym wolno pracowac bez pytania: czysty 2.0.70 i ta paczka (2.0.70, wszystkie mody).
 		// Inny zestaw modow z tej paczki rozpoznaje po root= w mt2009_mody.txt.
 		static readonly string[] KnownRoot = new string[] {
-			"7E79DE4ADB97D04A6433B8B894DD7011", "EB7CE4FB8AA081821DD993E2309B102F" };
-		// etc.index: czysty (2.0.66, 2.0.67 i 2.0.68 maja ten sam etc), z poprawka mgly, z mgla i znacznikiem
+			"E82FB838C2BBC4B825FB67C201F58B3B", "C84596D4DCDED2C1B9C3F9E24D3A20BB" };
+		// etc.index: czysty (2.0.66-2.0.70 maja ten sam etc), z poprawka mgly, z mgla i znacznikiem
 		static readonly string[] KnownEtc = new string[] {
 			"3D5E1E22A73C42DAF0825A0D6BD311C8", "A748EC48CFD78076FEADF7AE2556EAB6", "1FCE8FCDF557EE4B25ABE32A2E2A0980" };
-		const string CleanGdIndex = "3028F9B6BB409FCBACAA814ECF8E5B8E";
-		// gamedata z pierwszego wydania 2.1.2: ikona byla, ale item_list.txt nie wskazywal na nia
-		// (76009 mial ikone Zwoju Boga Smokow) - podmieniany jak czysty
-		const string BadGdIndex = "0E10A126D0B47073C1D95C811A14C974";
+		const string CleanGdIndex = "698DEBD1C4A65E84ED563D0ED5E03F4F";
+		// gamedata podmieniany jak czysty: czysty 2.0.68, pierwsze wydanie 2.1.2 (ikona byla, ale item_list.txt
+		// nie wskazywal na nia - 76009 mial ikone Zwoju Boga Smokow) i paczki 2.1.2-2.2.2 (2.0.68 z ikona)
+		static readonly string[] OldGdIndex = new string[] {
+			"3028F9B6BB409FCBACAA814ECF8E5B8E", "0E10A126D0B47073C1D95C811A14C974", "4BE217B51149B21DC41B7FE16B944759" };
 
 		const string ClientSave = "mt2009_mody.txt";
 		const string ServerSave = "mt2009_mody_serwer.txt";
@@ -466,7 +468,7 @@ namespace MT2009
 			{
 				string g = Md5(gdIdx);
 				if (g == PkgGdIndex) Done("05", "ikona 76009 juz byla");
-				else if (g == CleanGdIndex || g == BadGdIndex)
+				else if (g == CleanGdIndex || Array.IndexOf(OldGdIndex, g) >= 0)
 				{
 					CheckPkg(Path.Combine(kp, "gamedata.index"), PkgGdIndex, "klient\\pack\\gamedata");
 					CheckPkg(Path.Combine(kp, "gamedata.data"), PkgGdData, "klient\\pack\\gamedata");

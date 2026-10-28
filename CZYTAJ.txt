@@ -1,9 +1,18 @@
-﻿WERSJA 2.2.2: klient MT2009 PLUS 2.0.68, serwer MT2009 PLUS VERSION 2.37.1 (23.10.2026).
-Starsze wersje klienta (2.0.67 i niżej) są nieaktualne i nieobsługiwane – zaktualizuj klienta
-MT2009-Patcher.exe. Na kliencie 2.0.67 / serwerze 2.36.0 użyj paczki 2.1.1, na serwerze 2.37.0 – paczki 2.2.1.
+﻿WERSJA 2.3.1: klient MT2009 PLUS 2.0.70, serwer MT2009 PLUS VERSION 2.39.0 (28.10.2026).
+Starsze wersje klienta (2.0.68 i niżej) są nieaktualne i nieobsługiwane – zaktualizuj klienta
+MT2009-Patcher.exe. Na kliencie 2.0.67 / serwerze 2.36.0 użyj paczki 2.1.1, na serwerze 2.37.0 – paczki 2.2.1, na serwerze 2.37.1 – paczki 2.2.2.
 
 NUMERACJA WERSJI: poprawki podnoszą ostatnią cyfrę (2.1.1 -> 2.1.2), nowe funkcje środkową
 (2.1.x -> 2.2.1).
+
+ZMIANY W 2.3.1
+--------------
+- Nowy mod (serwer): 20. Kupowanie ze stosów.
+- Mody przeniesione na klienta 2.0.70: z plików modów klient zmienił localeinfo.py (mod 13) i uitooltip.py
+  (mod 05) – połączone bez konfliktów; gamedata (ikona 76009) złożony od nowa na 2.0.70, etc i exe bez zmian.
+- Mody przeniesione na serwer 2.39.0. Serwer 2.39.0 zmienił
+  z plików modów: char_item.cpp (mody 05, 06, 10, 16), playerbot_manager.cpp, docker-compose.yml,
+  .env.example i apply.sh (mod 14) – wszystko połączone bez konfliktów.
 
 ZMIANY W 2.2.2
 --------------
@@ -37,7 +46,7 @@ ZMIANY W 2.1.2
 CO JEST W PACZCE
 ----------------
 01. FPS 60/120/144/240 – Opcje Gry > System > FPS (działa po łatce exe: Ustaw_FPS.bat).
-    Ustaw_FPS.bat sprawdza wersję klienta w CLIENT_VERSION – działa tylko na 2.0.68.
+    Ustaw_FPS.bat sprawdza wersję klienta w CLIENT_VERSION – działa tylko na 2.0.70.
 02. Ruch bez zatrzymywania – po buffie, wsiadaniu na konia/mounta, po ciosie; też przy LPM.
     v2 (16.10): klawisz jest puszczany i wciskany ponownie (dawniej samo „wciśnij” exe często
     ignorował), a do tego: trzymany klawisz ruchu, a postać stoi 0,35 s – ruch jest wznawiany,
@@ -97,6 +106,15 @@ CO JEST W PACZCE
     - żaden potwór nie odlatuje od ciosów i skilli gracza (też od strzału łucznika na koniu);
     - skille żadnego potwora nie odpychają gracza.
     19 obejmuje 18 – wystarczy wybrać jeden z nich (gdy wybierzesz oba, serwer dostaje wersję z 19).
+20. Kupowanie ze stosów (serwer: playerbot_offline_market.h; marker MT2009_PLUS_BOT_STACK_BUY_V1).
+    Działa, gdy w panelu włączone jest zarządzanie sklepami botów i kupowanie części stosu.
+    Dotąd bot porównywał oferty po cenie całej transakcji, więc pojedyncza sztuka za Y wygrywała
+    z 19 sztukami stosu za 9,5Y (czyli 0,5Y za sztukę). Teraz:
+    - oferty tego samego priorytetu są porównywane po cenie za sztukę (także przy szukaniu w drugiej
+      wiosce);
+    - próbę kupna części stosu bot zużywa tylko na stos, z którego chce choć 1 sztukę (dawniej
+      8 prób szło na pierwsze lepsze stosy w oknie, np. mikstury, których nie potrzebował);
+    - prób na jedno przeglądanie rynku jest 16 zamiast 8.
 
 KLIENT
 ------
@@ -105,9 +123,9 @@ Zamknij grę i patcher. Zrób kopię folderu pack.
                       Potem klient\Ustaw_FPS.bat do folderu klienta, uruchom i wpisz 1.
   Sposób B (wybrane mody): Wybierz_mody.bat – opis niżej.
 W klient\pack:
-  root.index/.data      – root klienta 2.0.68 + mody 01, 02, 03, 04, 05, 06, 09, 11, 13, 14
-  gamedata.index/.data  – ikona Wykrywacza Bossów (gamedata 2.0.68 + ikona)
-  etc.index/.data       – mgła + nowy znacznik (etc 2.0.66–2.0.68 + te zmiany)
+  root.index/.data      – root klienta 2.0.70 + mody 01, 02, 03, 04, 05, 06, 09, 11, 13, 14
+  gamedata.index/.data  – ikona Wykrywacza Bossów (gamedata 2.0.70 + ikona)
+  etc.index/.data       – mgła + nowy znacznik (etc 2.0.66–2.0.70 + te zmiany)
 klient\root\*.py – te same pliki luzem, dla klienta z ROZPAKOWANYM rootem (pack\root);
   instalator wgrywa je sam.
 
@@ -118,13 +136,13 @@ Wybierz_mody.bat pyta: klient / serwer / oba, potem pokazuje listę modów z [x]
 Mody, które dzielą plik (np. game.py: 01, 02, 06, 14; char_item.cpp: 05, 06, 10, 16; char.cpp: 18, 19),
 łączy sam – każde połączenie jest gotowe w paczce (game.py ma 15 wariantów). Wyłączenie moda przy
 kolejnym uruchomieniu cofa go.
-  Klient: pack\root.index składa na nowo z czystego 2.0.68 i wybranych modów; root.data z paczki ma
+  Klient: pack\root.index składa na nowo z czystego 2.0.70 i wybranych modów; root.data z paczki ma
     w sobie każdy wariant każdego pliku, a gra czyta tylko to, na co
     wskazuje indeks. Tak samo etc (07, 08). gamedata (ikona 76009) – jak dotąd, gdy wybrano 05.
-    Sprawdza: wersję klienta (CLIENT_VERSION 2.0.68; starszy klient – przerywa), czy root/etc są w znanej wersji (inaczej pyta),
+    Sprawdza: wersję klienta (CLIENT_VERSION 2.0.70; starszy klient – przerywa), czy root/etc są w znanej wersji (inaczej pyta),
     czy wszystkie 3 części zip są rozpakowane. Łatka FPS: z 01 włącza, bez 01 (gdy było) wyłącza.
     Wybór zapisuje w <klient>\mt2009_mody.txt – następnym razem lista startuje od niego.
-  Serwer: pliki z wybranymi modami albo czyste (2.37.1 / sprzed przebudowy
+  Serwer: pliki z wybranymi modami albo czyste (2.39.0 / sprzed przebudowy
     towarzysza). Plik, którego nie rozpoznaje (Twoje własne zmiany), nadpisuje tylko po pytaniu.
     Dopisuje locale_string (05), pyta o SQL 76009 i o przebudowanie.
   Wszystko, co podmienia, idzie najpierw do <folder>\backup_mody_<data>\.
@@ -141,7 +159,7 @@ SERWER
     1. Przeciągnij serwer\linux-port na folder linux-port serwera. Podmienia w game\src:
        char_item.cpp (05, 06, 10, 16), target.cpp (05), ikarus_shop_manager.cpp, auction_house.cpp (09),
        input_main.cpp (09, 15, 17), battle.cpp (15), item_manager.cpp (12),
-       char.cpp, char_skill.cpp, char_battle.cpp (19 – obejmuje 18).
+       char.cpp, char_skill.cpp, char_battle.cpp (19 – obejmuje 18), playerbot_offline_market.h (20).
        14: input_login.cpp, playerbot_manager.cpp, playerbot_sidekick.h (też w overlays\playerbot\src\game\src),
        game\quest\towarzysz.quest, docker-compose.yml, .env.example, mariadb\playerbot\apply.sh
     2. Do docker\game\src\serverfiles\share\locale\poland\locale_string.txt dopisz na końcu

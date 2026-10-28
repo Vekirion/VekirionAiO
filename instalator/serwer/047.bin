@@ -311,6 +311,13 @@ if [ -s /opt/playerbot/item_proto.mt2009plus.sql ]; then
     fi
 fi
 
+# MT2009_PLUS_HALLOWEEN_V1: the Halloween Pumpkin (30321) is a plain event item, not a potion - the package
+# has it as USE / POTION_NODELAY (300 HP, 100 SP), so a right-click ate it (the owner's test, 27 Oct 2026).
+# Quest type like the Magic Wand and the Mask Card; the wand's use (event_halloween_hair) still takes it.
+# After the item rows above, so a world that just got the row gets this too. Every start; idempotent.
+db -e "UPDATE world.item_proto SET type = 18, subtype = 0, value0 = 0, value1 = 0 WHERE vnum = 30321 AND type <> 18;" \
+    || fail_step "could not make the Halloween Pumpkin a plain item" >&2
+
 # MT2009 Plus: the monsters the same way (mob_proto.mt2009plus.sql, the full
 # package's world.mob_proto). A world from another dump had the costume
 # pack's mount and pet seals from the file above and not their monsters, so
@@ -665,6 +672,35 @@ if [ "$lands_done" = "0" ]; then
         fail_step "could not clear the package's guild lands" >&2
     fi
 fi
+# MT2009_PLUS_TEMPLE_CURSE_REMOVED_V1: the Hwang Temple's curse went with
+# playerbotify apply_hwang_curse_removed and the Maska Sabaha above, but the
+# package's temple_map quest still put the curse's affect (AFFECT_TEMPLE_CURSE,
+# 306, "Klatwa Swiatyni ... Efekt nigdy sie nie konczy") on everybody logging
+# in on map 65, and hwang_introduction (Nabira, whose reward was the mask)
+# still dropped its List Gonczy (35004) in the temple. Both lose their handlers
+# in the game Dockerfile (owner, 23 October: "usun ikonke Klatwy Swiatyni ...
+# usun tez caly quest i system dropu z tym zwiazany"). Once: an affect row of
+# the curse (the engine never saves one, an older core may have) and the two
+# quest items still held (List Gonczy, Kamien Tygrysa 35003) go; item_proto
+# keeps both rows.
+curse_done=$(db -e "SELECT COUNT(*) FROM player.playerbot_migrations WHERE name = 'temple_curse_removed_2372';" 2>/dev/null || echo x)
+if [ "$curse_done" = "0" ]; then
+    if curse_out=$(db -e "
+        START TRANSACTION;
+        DELETE FROM player.affect WHERE bType = 306;
+        SELECT ROW_COUNT();
+        DELETE FROM player.item WHERE vnum IN (35003, 35004);
+        SELECT ROW_COUNT();
+        INSERT IGNORE INTO player.playerbot_migrations (name, done_at) VALUES ('temple_curse_removed_2372', NOW());
+        COMMIT;
+    "); then
+        curse_affects=$(printf '%s\n' "$curse_out" | awk 'NR == 1')
+        curse_items=$(printf '%s\n' "$curse_out" | awk 'NR == 2')
+        echo "[playerbot-migrate] Temple curse removed: ${curse_affects:-0} affect(s), ${curse_items:-0} quest item(s)"
+    else
+        fail_step "could not remove the Temple curse's affects and quest items" >&2
+    fi
+fi
 # 2.2.20 opened the Grotto of Exile (72, 73) and the Devil's Catacomb (216)
 # and no client of that time could stand on any of them: the grotto's maps
 # stood in the season2 pack without the maps/ the client looks under, and the
@@ -851,7 +887,7 @@ stranded=$(db -e "
       JOIN account.account a ON a.id = p.account_id
      WHERE LEFT(a.login, 10) = 'playerbot_'
        AND p.map_index NOT IN (1, 3, 4, 5, 6, 107, 81, 110, 111, 112, 113, 181, 182, 183, 200, 250, 302, 304,
-                               21, 23, 24, 25, 26, 61, 63, 64, 65, 69, 70, 71, 104, 108, 109, 79, 216, 217, 73,
+                               21, 23, 24, 25, 26, 61, 63, 64, 65, 70, 71, 104, 108, 109, 79, 216, 217, 73,
                                41, 43, 44, 45, 46, 62, 66, 67, 68, 72, 90, 208, 301, 303, 351,
                                364, 365, 366);
 ")
@@ -870,7 +906,7 @@ if [ -n "$stranded" ] && [ "$stranded" -gt 0 ] 2>/dev/null; then
                p.y = CASE pi.empire WHEN 1 THEN 899500 WHEN 3 THEN 221400 ELSE 240000 END
          WHERE LEFT(a.login, 10) = 'playerbot_'
            AND p.map_index NOT IN (1, 3, 4, 5, 6, 107, 81, 110, 111, 112, 113, 181, 182, 183, 200, 250, 302, 304,
-                               21, 23, 24, 25, 26, 61, 63, 64, 65, 69, 70, 71, 104, 108, 109, 79, 216, 217, 73,
+                               21, 23, 24, 25, 26, 61, 63, 64, 65, 70, 71, 104, 108, 109, 79, 216, 217, 73,
                                41, 43, 44, 45, 46, 62, 66, 67, 68, 72, 90, 208, 301, 303, 351,
                                364, 365, 366);
     "
@@ -3594,6 +3630,48 @@ if [ "$forest_done" = "0" ]; then
         echo "[playerbot-migrate] the Arezzo forest (362) removed: ${forest_chars:-0} character(s) and ${forest_exits:-0} way(s) out moved to the Temple of Ochao"
     else
         fail_step "could not move the characters out of the removed Arezzo forest (362)" >&2
+    fi
+fi
+
+# MT2009_PLUS_MAPS_WZ_V1: Wezowe Pole (80) and Kraina Gigantow (70) - the Yohara line's maps, taken over for the 2.x
+# line (the owner, 26 October 2026). maps_wz.sql (tools/maps_wz/gen_maps_wz.py): the pl-wiki's levels of the Giants
+# and ogres (1401-1403, 1603; the ogres 1601 / 1602 at the global sheet's 71 / 73 - only the level column; the global
+# mode's moby_global_2x.sql changes no level of these six). Every vnum the maps spawn and drop is ours already.
+# Idempotent (guarded UPDATE).
+for wz_sql in maps_wz.sql; do
+    [ -s "/opt/playerbot/$wz_sql" ] || continue
+    if db < "/opt/playerbot/$wz_sql"; then
+        echo "[playerbot-migrate] maps wz: $wz_sql applied"
+    else
+        fail_step "maps wz: $wz_sql failed" >&2
+    fi
+done
+
+# MT2009_PLUS_PASS69_OFF_V1: once - Przelecz (69, metin2_map_wl_pass) is in no map index and on no core any more (the
+# owner on the Yohara line, 15 October 2026; the 2.x line with Wezowe Pole, 26 October 2026). Every character saved
+# there, or whose way out leads there - people and bots - stands at Wezowe Pole's arrival (80, 1059000 726200 - its
+# Town.txt 94,94, where the desert's portal 10029 and /goto wezowe put a player down; tools/maps_wz/gen_maps_wz.py).
+# A bot is caught first by the stranded-bots step near the top (69 left its list of hosted maps): it goes to its
+# own kingdom's second map - so this moves people (and any bot's way out). The Yohara line's step of the same name.
+pass_done=$(db -e "SELECT COUNT(*) FROM player.playerbot_migrations WHERE name = 'wl_pass_69_removed';" 2>/dev/null || echo x)
+if [ "$pass_done" = "0" ]; then
+    if pass_out=$(db -e "
+        START TRANSACTION;
+        UPDATE player.player
+           SET map_index = 80, x = 1059000, y = 726200, exit_map_index = 80, exit_x = 1059000, exit_y = 726200
+         WHERE map_index = 69;
+        SELECT ROW_COUNT();
+        UPDATE player.player SET exit_map_index = 80, exit_x = 1059000, exit_y = 726200
+         WHERE exit_map_index = 69;
+        SELECT ROW_COUNT();
+        INSERT IGNORE INTO player.playerbot_migrations (name, done_at) VALUES ('wl_pass_69_removed', NOW());
+        COMMIT;
+    "); then
+        pass_chars=$(printf '%s\n' "$pass_out" | awk 'NR == 1')
+        pass_exits=$(printf '%s\n' "$pass_out" | awk 'NR == 2')
+        echo "[playerbot-migrate] Przelecz (69) removed: ${pass_chars:-0} character(s) and ${pass_exits:-0} way(s) out moved to Wezowe Pole (80)"
+    else
+        fail_step "could not move the characters out of the removed Przelecz (69)" >&2
     fi
 fi
 

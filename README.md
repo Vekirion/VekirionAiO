@@ -1,15 +1,15 @@
-# Vekirion AiO 2.2.2 – paczka modów do MT2009 PLUS
+# Vekirion AiO 2.3.1 – paczka modów do MT2009 PLUS
 
 Zestaw modów klienta i serwera do **MT2009 PLUS** (singleplayer Metin2 z botami), z instalatorem,
 w którym wybierasz, które mody wgrać.
 
 | | Wersja |
 |---|---|
-| Klient | MT2009 PLUS **2.0.68** |
-| Serwer | MT2009 PLUS **VERSION 2.37.1** (linux-port, Docker) |
+| Klient | MT2009 PLUS **2.0.70** |
+| Serwer | MT2009 PLUS **VERSION 2.39.0** (linux-port, Docker) |
 | Licencja | [CC BY-NC-SA 4.0](LICENSE) |
 
-> Starsze wersje klienta (2.0.67 i niżej) są nieaktualne – paczka ich nie obsługuje. Najpierw zaktualizuj
+> Starsze wersje klienta (2.0.68 i niżej) są nieaktualne – paczka ich nie obsługuje. Najpierw zaktualizuj
 > klienta `MT2009-Patcher.exe`, na starszym kliencie/serwerze użyj poprzedniej wersji paczki.
 
 > **Uwaga:** przed instalacją zrób kopię folderu `pack` klienta i folderu `linux-port` serwera.
@@ -42,6 +42,7 @@ w którym wybierasz, które mody wgrać.
 | 17 | **Ulepszanie co 0,2 s** zamiast co 1 s | S |
 | 18 | **Nieodpychanie bossów** – boss nie odjeżdża po ciosach i skillach gracza, a jego skille nie odpychają gracza | S |
 | 19 | **Nieodpychanie mobów (wszystkich)** – to samo co 18 dla każdego potwora (obejmuje 18) | S |
+| 20 | **Kupowanie ze stosów** – boty porównują oferty po cenie za sztukę i częściej kupują część stosu zamiast droższej pojedynczej sztuki | S |
 
 > **2.2.1: mody mają nowe numery** (po kolei, bez przerw): 06→04, 11→05, 12→06, 13→07, 14→08, 18→09,
 > 19→10, 22→11, 23→12, 25→13, 26→14, 27→15, 28→16, 29→17. Instalator sam przelicza zapisany wybór
@@ -63,7 +64,7 @@ Limity towarzyszy ustawiasz w `docker/.env`: `M2_SIDEKICK_MAX_ACTIVE=2` (1–6),
 
 ## Instalacja
 
-Pobierz paczkę z [Releases](../../releases) albo `git clone` i rozpakuj folder `Vekirion_AiO_2.2.2`.
+Pobierz paczkę z [Releases](../../releases) albo `git clone` i rozpakuj folder `Vekirion_AiO_2.3.1`.
 
 ### Windows – wybrane mody (zalecane)
 
@@ -82,7 +83,7 @@ zostaje usunięty. **Po każdym użyciu `MT2009-Patcher.exe` uruchom instalator 
 
 - **Klient:** przeciągnij zawartość `klient/pack` na folder `pack` klienta i zgódź się na podmianę.
   Potem skopiuj `klient/Ustaw_FPS.bat` do folderu klienta, uruchom i wpisz `1` (łatka FPS).
-  `Ustaw_FPS.bat` czyta wersję z pliku `CLIENT_VERSION` klienta i działa tylko na 2.0.68 – starszą
+  `Ustaw_FPS.bat` czyta wersję z pliku `CLIENT_VERSION` klienta i działa tylko na 2.0.70 – starszą
   wersję zgłasza jako nieaktualną i niczego nie zmienia.
 - **Serwer:** patrz niżej – kroki są takie same jak na Linuxie.
 
@@ -115,7 +116,7 @@ zostaje usunięty. **Po każdym użyciu `MT2009-Patcher.exe` uruchom instalator 
    cd /opt/mt2009/linux-port/docker && docker compose up -d --build
    ```
 
-Ręczne kopiowanie wgrywa **wszystkie** mody serwera (z 18 i 19 – wersję 19, która obejmuje bossów). Żeby wybrać tylko niektóre, użyj
+Ręczne kopiowanie wgrywa **wszystkie** mody serwera (z 18 i 19 – wersję 19, która obejmuje bossów; także 20). Żeby wybrać tylko niektóre, użyj
 `Wybierz_mody.bat` (część „serwer”) na komputerze, który widzi folder `linux-port`.
 
 ---
@@ -125,7 +126,7 @@ Ręczne kopiowanie wgrywa **wszystkie** mody serwera (z 18 i 19 – wersję 19, 
 - **Klient:** pliki `.py` gry są w `pack/root` – `root.data` (zawartość) i `root.index` (spis, co
   gdzie leży). `klient/pack/root.data` z paczki zawiera każde połączenie modów każdego zmienionego
   pliku (np. `game.py` ma 15 wariantów). Instalator składa nowy `root.index` z czystego indeksu
-  2.0.68 (`instalator/root.base`) i wpisów wybranych wariantów (`instalator/root.var`), po czym
+  2.0.70 (`instalator/root.base`) i wpisów wybranych wariantów (`instalator/root.var`), po czym
   pakuje go i szyfruje jak oryginał. Gra czyta tylko to, na co wskazuje indeks. Tak samo
   `pack/etc` (mody 07, 08); `pack/gamedata` (ikona 76009) jest kopiowany przy modzie 05.
 - **Serwer:** dla każdego pliku źródłowego wybiera wersję z wybranymi modami albo czystą
@@ -139,7 +140,7 @@ Ręczne kopiowanie wgrywa **wszystkie** mody serwera (z 18 i 19 – wersję 19, 
 ## Struktura
 
 ```
-Vekirion_AiO_2.2.2/
+Vekirion_AiO_2.3.1/
   Wybierz_mody.bat        instalator z wyborem modów (Windows)
   CZYTAJ.txt              opis modów i instalacji
   klient/

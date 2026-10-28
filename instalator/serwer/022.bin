@@ -2015,6 +2015,114 @@ static bool Mt2009PlusUseSashSkin(LPCHARACTER ch, LPITEM skin, TItemPos DestCell
 	return true;
 }
 
+// MT2009_PLUS_SUMMON_STONE_V1 (helpers) (server-patches/enginefixes): Metin
+// stones and ore veins summoned from an item - a special_item_group "mob" entry
+// opened from a box (71080-71082 Kamien Metin, 71057-71067 the vein scrolls,
+// also when a box is opened by a quest's pc.give_item_from_special_item_group).
+// Such a stone or vein vanishes 15 minutes after the summon unless it was
+// destroyed first, and no such item works inside a dungeon instance (dungeon
+// drops ignore the level rule on purpose, so a summoned stone there was free
+// loot at any level - the owner, 27 Oct 2026). Naturally spawned (regen) stones,
+// the dungeons' own stones and the boss summon scrolls do not come here.
+#include "mining.h"
+
+enum
+{
+	MT2009_SUMMON_KIND_NONE = 0,
+	MT2009_SUMMON_KIND_STONE = 1,
+	MT2009_SUMMON_KIND_VEIN = 2,
+	MT2009_SUMMON_LIFETIME_SEC = 15 * 60,
+};
+
+static int Mt2009PlusSummonMobKind(DWORD dwMobVnum)
+{
+	if (mining::IsVeinOfOre(dwMobVnum))
+		return MT2009_SUMMON_KIND_VEIN;
+	const CMob* pkMob = CMobManager::instance().Get(dwMobVnum);
+	if (pkMob && pkMob->m_table.bType == CHAR_TYPE_STONE)
+		return MT2009_SUMMON_KIND_STONE;
+	return MT2009_SUMMON_KIND_NONE;
+}
+
+// What the box's group can summon: a stone, a vein (nested "s<group>" entries
+// followed a few levels deep) or nothing of the two.
+static int Mt2009PlusSummonGroupKind(DWORD dwGroupVnum, int iDepth)
+{
+	if (iDepth > 4)
+		return MT2009_SUMMON_KIND_NONE;
+	const CSpecialItemGroup* pGroup = ITEM_MANAGER::instance().GetSpecialItemGroup(dwGroupVnum);
+	if (!pGroup)
+		return MT2009_SUMMON_KIND_NONE;
+	const std::vector<CSpecialItemGroup::CSpecialItemInfo> vecItems = pGroup->GetItems();
+	for (size_t i = 0; i < vecItems.size(); ++i)
+	{
+		int iKind = MT2009_SUMMON_KIND_NONE;
+		if (vecItems[i].isSpecial)
+			iKind = Mt2009PlusSummonGroupKind(vecItems[i].vnum, iDepth + 1);
+		else if (vecItems[i].vnum == CSpecialItemGroup::MOB && vecItems[i].count > 0)
+			iKind = Mt2009PlusSummonMobKind((DWORD) vecItems[i].count);
+		if (iKind != MT2009_SUMMON_KIND_NONE)
+			return iKind;
+	}
+	return MT2009_SUMMON_KIND_NONE;
+}
+
+// A dungeon: the character's dungeon, any instanced map (index 10000 and up -
+// every CDungeon copy and the other private copies), or a dungeon's own shared
+// map - the maps whose drops do not fade with the level (item_manager.cpp,
+// Mt2009PlusDungeonNoFade / Mt2009PlusDemonTowerFullDrop; the Demon Tower's
+// ground floor is the shared map 66).
+static bool Mt2009PlusInDungeonInstance(LPCHARACTER ch)
+{
+	if (!ch)
+		return false;
+	if (ch->GetDungeon() != NULL || ch->GetMapIndex() >= 10000)
+		return true;
+	switch (ch->GetMapIndex())
+	{
+		case 66: case 208: case 216: case 351: case 352:
+		case 363: case 364: case 365: case 366:
+			return true;
+	}
+	return false;
+}
+
+// The stone's own timer. It holds the VID and the race, never a pointer: a
+// stone killed, mined out or gone with its dungeon is simply not found (VIDs
+// are not reused while the core runs), and the summoner's warps or logout do
+// not matter - the timer belongs to the stone's map, not to the player.
+EVENTINFO(mt2009_summon_lifetime_info)
+{
+	DWORD dwVID;
+	DWORD dwRace;
+
+	mt2009_summon_lifetime_info() : dwVID(0), dwRace(0) {}
+};
+
+EVENTFUNC(mt2009_summon_lifetime_event)
+{
+	mt2009_summon_lifetime_info* info = dynamic_cast<mt2009_summon_lifetime_info*>(event->info);
+	if (info == NULL)
+		return 0;
+	LPCHARACTER ch = CHARACTER_MANAGER::instance().Find(info->dwVID);
+	if (!ch || ch->IsPC() || ch->GetRaceNum() != info->dwRace || ch->IsDead())
+		return 0;
+	sys_log(0, "SUMMON_STONE: %s (%u, vid %u) on map %ld vanishes after 15 minutes",
+			ch->GetName(), info->dwRace, info->dwVID, ch->GetMapIndex());
+	M2_DESTROY_CHARACTER(ch);
+	return 0;
+}
+
+static void Mt2009PlusStartSummonLifetime(LPCHARACTER pkMob)
+{
+	if (!pkMob)
+		return;
+	mt2009_summon_lifetime_info* info = AllocEventInfo<mt2009_summon_lifetime_info>();
+	info->dwVID = (DWORD) pkMob->GetVID();
+	info->dwRace = pkMob->GetRaceNum();
+	event_create(mt2009_summon_lifetime_event, info, PASSES_PER_SEC(MT2009_SUMMON_LIFETIME_SEC));
+}
+
 bool CHARACTER::UseItemEx(LPITEM item, TItemPos DestCell)
 {
 	// MT2009_PLUS_AREZZO_COSTUME_SETS_V1 (use): the sash skins, before the item's own type.
@@ -2491,6 +2599,21 @@ bool CHARACTER::UseItemEx(LPITEM item, TItemPos DestCell)
 				}
 #endif
 				DWORD dwBoxVnum = item->GetVnum();
+				// MT2009_PLUS_SUMMON_STONE_V1 (dungeon): a box that summons a Metin
+				// stone or an ore vein does not open inside a dungeon instance;
+				// the item stays in the bag (the line once a second, as the
+				// chests' notices - a stack opened at once is one line).
+				{
+					const int iSummonKind = Mt2009PlusSummonGroupKind(dwBoxVnum, 0);
+					if (iSummonKind != MT2009_SUMMON_KIND_NONE && Mt2009PlusInDungeonInstance(this))
+					{
+						if (PulseManager::Instance().IncreaseClock(GetPlayerID(), MT2009_PLUS_PULSE_CHEST_NOTICE, std::chrono::milliseconds(1000)))
+							ChatPacket(CHAT_TYPE_INFO, iSummonKind == MT2009_SUMMON_KIND_VEIN
+									? "Nie mozesz przywolac zyly w lochu."
+									: "Nie mozesz przywolac kamienia Metin w lochu.");
+						return false;
+					}
+				}
 				std::vector <DWORD> dwVnums;
 				std::vector <DWORD> dwCounts;
 				std::vector <LPITEM> item_gets(0);
@@ -8928,7 +9051,32 @@ LPITEM CHARACTER::GiveItemToPlayerSpecialGroup(DWORD dwVnum, DWORD dwCount, int 
 		int x = GetX() + number(-500, 500);
 		int y = GetY() + number(-500, 500);
 
+		// MT2009_PLUS_SUMMON_STONE_V1 (spawn): a stone or a vein summoned from an
+		// item - never inside a dungeon instance (the box path refuses it before
+		// the item is used; this covers a quest opening such a group there), and
+		// gone 15 minutes after the summon unless destroyed first.
+		const int iMt2009SummonKind = Mt2009PlusSummonMobKind(dwCount);
+		if (iMt2009SummonKind != MT2009_SUMMON_KIND_NONE && Mt2009PlusInDungeonInstance(this))
+		{
+			ChatPacket(CHAT_TYPE_INFO, iMt2009SummonKind == MT2009_SUMMON_KIND_VEIN
+					? "Nie mozesz przywolac zyly w lochu."
+					: "Nie mozesz przywolac kamienia Metin w lochu.");
+			bSuccess = false;
+			break;
+		}
 		LPCHARACTER ch = CHARACTER_MANAGER::instance().SpawnMob(dwCount, GetMapIndex(), x, y, 0, true, -1);
+		if (ch && iMt2009SummonKind != MT2009_SUMMON_KIND_NONE)
+		{
+			// A vein already got the engine's own random 7-15 minute end
+			// (kill_ore_load_event, char.cpp); a summoned one keeps
+			// exactly the 15 minutes below instead (regen veins keep theirs).
+			if (iMt2009SummonKind == MT2009_SUMMON_KIND_VEIN)
+				event_cancel(&ch->m_pkMiningEvent);
+			Mt2009PlusStartSummonLifetime(ch);
+			ChatPacket(CHAT_TYPE_INFO, iMt2009SummonKind == MT2009_SUMMON_KIND_VEIN
+					? "Przywolana zyla zniknie po 15 minutach."
+					: "Przywolany kamien Metin zniknie po 15 minutach, jesli go nie zniszczysz.");
+		}
 		if (ch)
 		{
 			ch->SetAggressive();

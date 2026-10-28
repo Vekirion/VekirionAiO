@@ -60,3 +60,5 @@ docker/game/src/server/game/src/char_skill.cpp|19|059.bin
 docker/game/src/server/game/src/char_skill.cpp|18,19|060.bin
 docker/game/src/server/game/src/char_battle.cpp|-|061.bin
 docker/game/src/server/game/src/char_battle.cpp|19|062.bin
+docker/game/src/server/game/src/playerbot_offline_market.h|-|063.bin
+docker/game/src/server/game/src/playerbot_offline_market.h|20|064.bin
