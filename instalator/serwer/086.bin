@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{# MT2009_PLUS_RARE_DROP_SWITCHES_V1: Kupony SM, szarfy i Cor Draconis - six switches, event flags in player.quest (dbeditor/raredrop.py). #}
+{% block title %}Kupony SM, szarfy, Cor · Edytor bazy danych · {{ panel_brand }}{% endblock %}
+{% block content %}
+{% include 'dbeditor/_tables_head.html' %}
+<link rel="stylesheet" href="{{ url_for('static', filename='dbeditor-items.css') }}">
+<style>
+.rdw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.rdw-card{border:1px solid var(--line,#253042);border-radius:12px;padding:14px 16px;background:var(--panel-2,#131a24)}
+.rdw-card h3{margin:0 0 4px}
+.rdw-switch{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line,#253042)}
+.rdw-switch:first-of-type{border-top:0}
+.rdw-switch input[type=checkbox]{width:20px;height:20px;margin-top:2px;flex:none}
+.rdw-switch ul{margin:4px 0 0;padding-left:18px;color:var(--muted,#8a96a8);font-size:13px}
+.rdw-state{display:inline-block;padding:0 8px;border-radius:9px;font-size:12px;margin-left:6px}
+.rdw-state.on{background:color-mix(in srgb,#39e890 22%,transparent)}
+.rdw-state.off{background:color-mix(in srgb,#ff5757 22%,transparent)}
+.rdw-state.wait{background:color-mix(in srgb,#f5b83d 25%,transparent)}
+</style>
+<p class="eyebrow">EDYTOR BAZY DANYCH · KUPONY SM, SZARFY, COR</p>
+<h1>🔀 Kupony SM, szarfy i Cor Draconis</h1>
+<section class="panel dbt-note">
+  <p>Wyłączniki dropu, który bossowie i metiny dają <b>same z siebie</b> (reguły wbudowane w grę), osobno z bossów i z metinów. Zaznaczone = drop włączony (tak jak dotąd).</p>
+  <p>Zmiana zaczyna działać po <b>Zastosuj</b> (restart rdzeni). Dotyczy graczy i botów – boty dostają ten drop tak samo jak gracze.</p>
+  <p class="muted">Drop, który dodasz sam na stronie {% if 'dbeditor.drops_index' in dbt_endpoints %}<a href="{{ url_for('dbeditor.drops_index') }}">Drop</a>{% else %}Drop{% endif %} (np. szarfa z jednego wybranego metina), wypada dalej, nawet przy wyłączonym przełączniku. Przełączniki nie zmieniają zawartości szkatułek (strona Szkatułki), Alchemika, Battle Passa, Koła fortuny ani nagród z eventów.</p>
+</section>
+{% if error %}<section class="panel dbt-note error"><p>Nie udało się odczytać przełączników: {{ error }}</p></section>{% endif %}
+{% if alchemy_off or sash_off %}
+<section class="panel dbt-note warn"><p>
+  {% if alchemy_off %}Alchemia jest wyłączona dla całego świata (flaga <code>m2_alchemy_off</code>, strona „Alchemia i szarfy”) – żaden boss ani metin nie da Cor Draconis, niezależnie od przełączników niżej. {% endif %}
+  {% if sash_off %}Szarfy są wyłączone dla całego świata (flaga <code>m2_sash_off</code>) – żaden boss, metin ani skrzynia bossa nie da szarfy, niezależnie od przełączników niżej.{% endif %}
+</p></section>
+{% endif %}
+
+<form method="post">
+<input type="hidden" name="dbe_csrf" value="{{ dbe_csrf }}">
+<section class="panel">
+  <div class="rdw-grid">
+  {% for g in groups %}
+    <div class="rdw-card">
+      <h3>{{ g.icon }} {{ g.title }}</h3>
+      <p class="muted" style="margin:0 0 6px;font-size:13px">{{ g['items'] }}</p>
+      {% for s in g.switches %}
+      <label class="rdw-switch">
+        <input type="hidden" name="present_{{ s.flag }}" value="1">
+        <input type="checkbox" name="{{ s.flag }}" value="1" {{ 'checked' if s.on }} aria-label="{{ s.label }}">
+        <span><b>{{ s.label }}</b>
+          <span class="rdw-state {{ 'on' if s.on else 'off' }}">{{ 'włączony' if s.on else 'wyłączony' }}</span>
+          {% if s.pending %}<span class="rdw-state wait" title="zapisane, gra zastosuje po restarcie">czeka na Zastosuj</span>{% endif %}
+          <ul>{% for line in s.sources %}<li>{{ line }}</li>{% endfor %}</ul>
+        </span>
+      </label>
+      {% endfor %}
+    </div>
+  {% endfor %}
+  </div>
+  <div class="dbt-actions">
+    <label>Notatka (opcjonalnie)<input name="note" maxlength="200" style="width:280px"></label>
+    <button>💾 Zapisz przełączniki</button>
+  </div>
+  <p class="muted">Gra trzyma przełączniki jako flagi świata (<code>player.quest</code>, dwPID 0: {% for g in groups %}{% for s in g.switches %}<code>{{ s.flag }}</code>{{ ', ' if not loop.last }}{% endfor %}{{ ', ' if not loop.last }}{% endfor %}; 1 = wyłączony). GM może przełączyć jedną od razu w grze, np. <code>/e m2_cor_boss_off 1</code>.</p>
+</section>
+</form>
+
+{# MT2009_PLUS_METIN_BOOK_SWITCH_V1 [Autor: Vekirion]: the item the engine adds to every Metin's drop (dbeditor/raredrop.py raredrop_book). #}
+{% if book %}
+<form method="post" action="{{ url_for('dbeditor.raredrop_book') }}" id="ksiega">
+<input type="hidden" name="dbe_csrf" value="{{ dbe_csrf }}">
+<section class="panel">
+  <h2>📘 Księga z metinów <small class="muted">(dokładana przez silnik)</small></h2>
+  <p>Silnik sam dokłada <b>jeden przedmiot z każdego metina</b> (domyślnie Księgę Umiejętności 50300), jeśli tabela dropu go nie dała – dla gracza najwyżej 15 poziomów wyżej od metina, poza metinami w lochach Razadora i Nemere. Tego nie da się zmienić na stronie Drop, bo to nie jest pozycja w <code>mob_drop_item</code>.</p>
+  {% if book.error %}<p class="dbt-note error">Nie udało się odczytać ustawienia: {{ book.error }}</p>{% endif %}
+  <p><b>Teraz:</b>
+    {% if book.mode == 'off' %}<span class="rdw-state off">wyłączona</span> – metiny dają księgi tylko z tabel dropu.
+    {% else %}<span class="rdw-state on">włączona</span> – {{ book.name or 'przedmiot' }} <small class="muted">(VNUM {{ book.item }})</small>{% endif %}
+    {% if book.pending %}<span class="rdw-state wait" title="zapisane, gra zastosuje po restarcie">czeka na Zastosuj</span>{% endif %}</p>
+  <div class="rdw-grid">
+    <label class="rdw-switch"><input type="radio" name="book_mode" value="default" {{ 'checked' if book.mode == 'default' }}>
+      <span><b>Księga Umiejętności (50300)</b><ul><li>tak jak dotąd</li></ul></span></label>
+    <label class="rdw-switch"><input type="radio" name="book_mode" value="other" {{ 'checked' if book.mode == 'other' }}>
+      <span><b>Inny przedmiot</b> – VNUM: <input name="book_vnum" value="{{ book.vnum if book.mode == 'other' else '' }}" inputmode="numeric" style="width:110px" placeholder="np. szkatułka">
+        <ul><li>np. szkatułka z księgami (najpierw ustaw jej zawartość na stronie Szkatułki)</li><li>wypada 1 sztuka, chyba że tabela dropu już dała ten przedmiot</li></ul></span></label>
+    <label class="rdw-switch"><input type="radio" name="book_mode" value="off" {{ 'checked' if book.mode == 'off' }}>
+      <span><b>Nic</b><ul><li>silnik niczego nie dokłada; księgi wypadają tylko z tabel dropu (strona Drop)</li></ul></span></label>
+  </div>
+  <div class="dbt-actions">
+    <label>Notatka (opcjonalnie)<input name="note" maxlength="200" style="width:280px"></label>
+    <button>💾 Zapisz księgę z metinów</button>
+  </div>
+  <p class="muted">Flagi świata <code>m2_metin_book_off</code> (1 = nic) i <code>m2_metin_book_vnum</code> (0 = 50300). Działa po <b>Zastosuj</b>, a od razu w grze np. <code>/e m2_metin_book_vnum 50011</code>. Wymaga serwera z modem „Księga z metinów” (item_manager.cpp, MT2009_PLUS_METIN_BOOK_SWITCH_V1) – bez niego gra ignoruje te flagi.</p>
+</section>
+</form>
+{% endif %}
+
+<section class="panel">
+  <h2>Ostatnie zmiany przełączników</h2>
+  {% include 'dbeditor/_items_history_list.html' %}
+</section>
+{% endblock %}

@@ -199,6 +199,8 @@ namespace {
     }
     // MT2009_PLUS_BOT_STACK_BUY_V1 [Autor: Vekirion]: the price of one piece of
     // `pieces` bought for `price` (rounded up), for ranking lines against each other.
+    // MT2009_PLUS_BOT_STACK_BUY_V2: how many other lines of the item picked a browse rates.
+    constexpr int PLAYERBOT_STACK_BUY_SAME_LINES = 48;
     long long PlayerBotStackBuyUnitPrice(long long price, long long pieces) {
         if (price <= 0 || pieces <= 1) return price;
         return (price + pieces - 1) / pieces;
@@ -828,6 +830,36 @@ namespace {
                 BrowsePlayerBotPersonLines(shops, rate);
             if (!o.buyOwner)
                 BrowseLines(shops, o, 64, rate);
+            // MT2009_PLUS_BOT_STACK_BUY_V2 [Autor: Vekirion] (Kupowanie ze stosow): the line picked
+            // is held against every other line of the same item on the stands in reach. The window
+            // above reads 64 lines, so of 61 single pieces and one stack of the same item a window
+            // almost always held only singles, and the cheaper stack a few lines on was never rated.
+            // Each such line is rated by the same `rate` - the same tests, the part of a stack, the
+            // price of one piece and a person's line ranked SHOP_PLAYER_PREF_PCT cheaper - so a
+            // person's line keeps the preference it had and the cheaper piece wins as before.
+            if (o.buyOwner) {
+                DWORD pickVnum = 0;
+                for (const auto& entry : shops)
+                    if (entry.second->GetOwnerPID() == o.buyOwner) {
+                        if (auto picked = entry.second->GetItem(o.buyItem))
+                            pickVnum = picked->GetInfo().vnum;
+                        break;
+                    }
+                if (pickVnum) {
+                    const DWORD pickOwner = o.buyOwner, pickItem = o.buyItem;
+                    partTries = std::max(partTries, 8);
+                    int looked = 0;
+                    for (const auto& entry : shops) {
+                        if (looked >= PLAYERBOT_STACK_BUY_SAME_LINES) break;
+                        for (const auto& [id, line] : entry.second->GetItems()) {
+                            if (!line || line->GetInfo().vnum != pickVnum) continue;
+                            if (entry.second->GetOwnerPID() == pickOwner && id == pickItem) continue;
+                            if (++looked > PLAYERBOT_STACK_BUY_SAME_LINES) break;
+                            rate(entry.second, id, line);
+                        }
+                    }
+                }
+            }
             if (o.buyOwner)
                 best.Log(ch, "browse", o.buyOwner, o.buyItem);
             // A first village's stands with nothing on them this bot came for:

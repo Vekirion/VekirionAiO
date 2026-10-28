@@ -1,0 +1,211 @@
+{% extends 'base.html' %}
+{# MT2009_PLUS_DROP_BULK_V1 [Autor: Vekirion]: one change of one item in the drop of many monsters (dbeditor/drops_bulk.py). #}
+{% block title %}Drop – zmiana masowa · Edytor bazy danych · {{ panel_brand }}{% endblock %}
+{% block content %}
+{% include 'dbeditor/drops_head.html' %}
+<style>
+.dbk-filters{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.dbk-filters label,.dbk-op label{display:grid;gap:4px;color:var(--muted,#8a96a8);font-size:13px}
+.dbk-filters input{width:110px}.dbk-filters .dbk-wide{width:240px}
+.dbk-ops{display:flex;gap:8px;flex-wrap:wrap;margin:.4em 0 .8em}
+.dbk-ops label{display:flex;gap:6px;align-items:center;padding:6px 12px;border-radius:14px;border:1px solid var(--edge,#253042);cursor:pointer}
+.dbk-ops label:has(input:checked){background:var(--gold,#d6a74a);color:#1b1309;font-weight:600}
+.dbk-op{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin:.5em 0}
+.dbk-op input{width:100px}.dbk-op .dbk-item{width:120px}
+.dbk-op [data-name]{font-size:13px;align-self:center;min-width:120px}
+.dbk-kinds{display:flex;gap:10px;flex-wrap:wrap;font-size:13px}
+.dbk-kinds label{display:flex;gap:4px;align-items:center}
+.dbk-lines{font-size:12px;color:var(--muted,#8a96a8)}
+.dbk-lines b{color:var(--text,#eee);font-weight:500}
+tr.dbk-skip td{opacity:.6}
+tr.dbk-new td:first-child,tr.dbk-change td:first-child{border-left:3px solid #39e890}
+tr.dbk-empty td:first-child{border-left:3px solid #ff5757}
+tr.dbk-skip td:first-child,tr.dbk-same td:first-child{border-left:3px solid #8a96a8}
+.dbk-arrow{color:var(--muted,#8a96a8);padding:0 4px}
+</style>
+<p class="eyebrow">EDYTOR BAZY DANYCH · DROP · ZMIANA MASOWA</p>
+<h1>⚡ Drop – zmiana masowa</h1>
+<p class="muted">Jedna zmiana <b>jednego przedmiotu</b> w dropie wielu potworów naraz: wybierz potwory filtrami, wybierz co zrobić, sprawdź podgląd i zapisz. Reszta dropu każdego potwora zostaje taka, jaka była. Wszystko trafia do jednego zapisu (jedna kopia zapasowa – jedno „Przywróć” cofa całą zmianę).</p>
+
+{% if not has_base %}<section class="panel dbd-status error"><p>Gra nie opublikowała jeszcze <code>mob_drop_item.txt</code> – nie ma czego zmieniać (uruchom grę na aktualnym obrazie).</p></section>{% endif %}
+
+{% if preview is not none %}
+{# ------------------------------------------------------------ preview --- #}
+<section class="panel">
+  <h2>Podgląd: {{ ops[p.op] }} <small class="muted">{{ p.comment or p['item'] }} ({{ p['item'] }}){% if p.to_item %} → {{ p.to_comment or p.to_item }} ({{ p.to_item }}){% endif %}</small></h2>
+  <p>
+    {% set n_change = counts.get('change', 0) + counts.get('new', 0) + counts.get('empty', 0) %}
+    <b>Zmieni się {{ n_change }} {{ 'grupa' if n_change == 1 else 'grup' }} dropu</b>
+    {% if counts.get('new') %} · w tym {{ counts['new'] }} nowych grup{% endif %}
+    {% if counts.get('empty') %} · <span class="dbd-bad">{{ counts['empty'] }} zostanie pustych (potwór straci drop tego rodzaju)</span>{% endif %}
+    {% if counts.get('skip') %} · pominięte: {{ counts['skip'] }}{% endif %}
+    {% if counts.get('same') %} · już tak jest: {{ counts['same'] }}{% endif %}
+  </p>
+  {% if p.op == 'add' %}<p class="muted dbd-help">Rodzaj: <b>{{ kind_help[p.kind] }}</b>.{% if p.kind == 'kill' %} W tej grupie szansa zależy od wag wszystkich pozycji – nowa pozycja zmniejsza szanse pozostałych.{% endif %}</p>{% endif %}
+  {% if preview %}
+  <div class="table-wrap"><table class="dbd-table">
+    <thead><tr><th>Potwór</th><th>Rodzaj</th><th>Przed</th><th></th><th>Po</th><th>Uwagi</th></tr></thead>
+    <tbody>
+    {% for r in preview %}
+    <tr class="dbk-{{ r.status }}">
+      <td>{{ r.name }} <small class="muted">{{ r.mob }}{% if r.info %} · poz. {{ r.info.level }}{% endif %}</small>{% if r.info and r.info.kind in ('metin', 'boss') %}<span class="dbd-tag {{ r.info.kind }}">{{ r.info.kind_name }}</span>{% endif %}</td>
+      <td>{{ kind_names[r.kind] }}{% if r.group and r.kind == 'kill' %} <small class="muted">co {{ r.group.kill_drop }}</small>{% endif %}</td>
+      <td class="dbk-lines">{% for l in r.before %}<b>{{ l }}</b><br>{% else %}<span class="muted">{{ 'brak grupy' if not r.group else '—' }}</span>{% endfor %}</td>
+      <td class="dbk-arrow">→</td>
+      <td class="dbk-lines">{% if r['items'] is none %}<span class="muted">bez zmian</span>{% else %}{% for l in r.after %}<b>{{ l }}</b><br>{% else %}<span class="muted">usunięty</span>{% endfor %}<small>({{ r.lines_before }} → {{ r.lines_after }} poz.)</small>{% endif %}</td>
+      <td class="dbk-lines">{% if r.status == 'skip' %}<b>pominięty:</b> {% endif %}{{ r.message }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <p class="muted">Żaden z zaznaczonych potworów nie ma tego przedmiotu w wybranych rodzajach dropu – nic do zmiany.</p>
+  {% endif %}
+  <form method="post" action="{{ url_for('dbeditor.drops_bulk_post') }}" class="dbd-actions dbd-form">
+    <input type="hidden" name="dbe_csrf" value="{{ csrf }}"><input type="hidden" name="step" value="save"><input type="hidden" name="token" value="{{ token }}">
+    {% for k, v in form_items %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+    {% if n_change %}<button data-confirm="Zapisać zmianę w {{ n_change }} grupach dropu?">💾 Zapisz zmianę ({{ n_change }} grup)</button>{% endif %}
+    <button type="button" onclick="history.back()">← Popraw</button>
+  </form>
+  <p class="muted dbd-help">Gra użyje zmian po restarcie rdzeni (<b>Zastosuj</b> na stronie Edytora bazy danych). Szanse „na jedno zabicie” – dla gracza na poziomie potwora, bez premium i eventów.</p>
+</section>
+{% else %}
+{# ------------------------------------------------------------ filters --- #}
+<section class="panel">
+  <h2>1. Wybierz potwory</h2>
+  <form method="get" class="dbk-filters">
+    <label>Nazwa albo VNUM-y (po przecinku)<input name="q" value="{{ f.q }}" class="dbk-wide" placeholder="np. Metin albo 8001, 8002"></label>
+    <label>Typ<select name="typ"><option value="">wszystkie</option>{% for k, n in kinds_filter.items() %}<option value="{{ k }}" {{ 'selected' if f.typ == k }}>{{ n }}</option>{% endfor %}</select></label>
+    <label>Ranga<select name="ranga"><option value="">każda</option>{% for k, n in rank_names.items() %}<option value="{{ k }}" {{ 'selected' if f.ranga == k|string }}>{{ n }}</option>{% endfor %}</select></label>
+    <label>Poziom od<input name="od" value="{{ f.od }}" inputmode="numeric"></label>
+    <label>Poziom do<input name="do" value="{{ f['do'] }}" inputmode="numeric"></label>
+    {% if maps %}<label>Mapa<select name="mapa"><option value="">każda</option>{% for idx, title in maps %}<option value="{{ idx }}" {{ 'selected' if f.mapa == idx|string }}>{{ title }}</option>{% endfor %}</select></label>{% endif %}
+    <label>Dropi przedmiot (VNUM)<input name="dropi" value="{{ f.dropi }}" placeholder="np. 50300"></label>
+    <label>w grupie<select name="dropi_kind"><option value="">dowolnej</option>{% for k, n in kind_names.items() %}<option value="{{ k }}" {{ 'selected' if f.dropi_kind == k }}>{{ n }}</option>{% endfor %}</select></label>
+    {% if prefill.get('item') %}<input type="hidden" name="item" value="{{ prefill.get('item') }}">{% endif %}
+    {% if prefill.get('op') %}<input type="hidden" name="op" value="{{ prefill.get('op') }}">{% endif %}
+    <button>🔍 Pokaż potwory</button>
+    {% if searched %}<a href="{{ url_for('dbeditor.drops_bulk') }}">wyczyść</a>{% endif %}
+  </form>
+  <p class="muted dbd-help">Filtry łączą się („Metiny” + „Mapa” = metiny z tej mapy). Mapa to miejsca z plików respawnu (z grupami i bossami czasowymi). „Dropi przedmiot” szuka w dropie potworów (bez zwykłego i specjalnego dropu).</p>
+  {% if error %}<p class="dbd-bad">{{ error }}</p>{% endif %}
+</section>
+
+{% if searched and not error %}
+<form method="post" action="{{ url_for('dbeditor.drops_bulk_post') }}" class="dbd-form" id="dbk-form" data-api="{{ url_for('dbeditor.api_items') }}">
+<input type="hidden" name="dbe_csrf" value="{{ csrf }}"><input type="hidden" name="step" value="preview">
+<input type="hidden" name="filters" value="{{ filters }}">
+<section class="panel">
+  <h2>Potwory <small class="muted">{{ mobs|length }}{% if too_many %} (pokazano pierwsze {{ limit }} – zawęź filtry){% endif %}</small></h2>
+  {% if mobs %}
+  <label><input type="checkbox" class="dbd-all" data-target=".dbk-mob" checked> zaznacz / odznacz wszystkie</label>
+  <div class="table-wrap"><table class="dbd-table">
+    <thead><tr><th></th><th>VNUM</th><th>Nazwa</th><th>Poziom</th><th>Ranga</th><th>Mapy</th><th>Drop potworów{% if f.dropi %} · przedmiot {{ f.dropi }}{% endif %}</th></tr></thead>
+    <tbody>
+    {% for m in mobs %}
+    <tr>
+      <td><input type="checkbox" class="dbk-mob" name="mob" value="{{ m.vnum }}" checked></td>
+      <td>{{ m.vnum }}</td>
+      <td>{{ m.name or '—' }}{% if m.kind in ('metin', 'boss') %}<span class="dbd-tag {{ m.kind }}">{{ m.kind_name }}</span>{% endif %}</td>
+      <td>{{ m.level }}</td><td>{{ m.rank_name }}</td>
+      <td class="dbk-lines">{{ m.maps|join(', ') or '—' }}</td>
+      <td class="dbk-lines">{% for k in m.kinds %}{{ kind_names[k.kind] }} ({{ k.count }}){% if k.custom %}<span class="dbd-tag custom">panel</span>{% endif %}{% for l in k.lines %}: <b>{{ l }}</b>{% endfor %}{% if not loop.last %} · {% endif %}{% else %}<span class="muted">brak własnego dropu</span>{% endfor %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <p class="muted">Żaden potwór nie pasuje do filtrów.</p>
+  {% endif %}
+</section>
+
+{% if mobs %}
+{% set op0 = prefill.get('op') or ('edit' if prefill.get('item') or f.dropi else 'add') %}
+<section class="panel">
+  <h2>2. Co zrobić u zaznaczonych potworów</h2>
+  <div class="dbk-ops">{% for k, n in ops.items() %}<label><input type="radio" name="op" value="{{ k }}" {{ 'checked' if op0 == k }}> {{ n }}</label>{% endfor %}</div>
+
+  <div class="dbk-op">
+    <label>Przedmiot (VNUM, albo s+numer szkatułki)<input name="item" class="dbk-item" value="{{ prefill.get('item') or f.dropi }}" required></label>
+    <span data-name="item" class="muted"></span>
+  </div>
+
+  <div data-op="add">
+    <div class="dbk-op">
+      <label>Do grupy<select name="kind" class="dbk-kind">{% for k, n in kind_help.items() %}<option value="{{ k }}">{{ n }}</option>{% endfor %}</select></label>
+      <label>Ilość<input name="count" type="number" min="1" max="2000" value="1"></label>
+      <label data-kind="pct">Szansa % na zabicie<input name="pct" value="1" inputmode="decimal"></label>
+      <label data-kind="kill">Waga<input name="weight" type="number" min="1" value="1"></label>
+      <label data-kind="kill">Rare %<input name="rare" type="number" min="0" max="100" value="0"></label>
+    </div>
+    <div class="dbk-op">
+      <label data-kind="kill">Nowa grupa: co ile zabójstw<input name="kill_drop" type="number" min="1" value="100"></label>
+      <label data-kind="limit">Nowa grupa: od poziomu gracza<input name="level_limit" type="number" min="0" max="250" value="1"></label>
+      <label>Gdy potwór już ma ten przedmiot w tej grupie<select name="exists">{% for k, n in exists.items() %}<option value="{{ k }}">{{ n }}</option>{% endfor %}</select></label>
+    </div>
+    <p class="muted dbd-help">Potwór, który nie ma jeszcze grupy tego rodzaju, dostanie nową (z tą jedną pozycją). „Co ile zabójstw” i „od poziomu” dotyczą tylko takich nowych grup – istniejące zostają przy swoich.</p>
+  </div>
+
+  <div data-op="edit">
+    <div class="dbk-op">
+      <label>Zamień na (VNUM, puste = ten sam)<input name="to_item" class="dbk-item"></label>
+      <span data-name="to_item" class="muted"></span>
+      <label>Nowa ilość (puste = bez zmian)<input name="new_count" type="number" min="1" max="2000"></label>
+    </div>
+    <div class="dbk-op">
+      <label>Szansa<select name="prob_mode" class="dbk-mode"><option value="keep">bez zmian</option><option value="set">ustaw na</option><option value="mul">pomnóż przez</option></select></label>
+      <label data-mode="set">Szansa % (drop, od poziomu, rękawice)<input name="pct" inputmode="decimal" disabled></label>
+      <label data-mode="set">Waga (co N zabójstw)<input name="weight" type="number" min="1" disabled></label>
+      <label data-mode="mul">Mnożnik<input name="factor" value="2" inputmode="decimal" disabled></label>
+    </div>
+  </div>
+
+  <div data-op="edit remove">
+    <p class="dbk-kinds"><span class="muted">W grupach:</span>{% for k, n in kind_names.items() %}<label><input type="checkbox" name="kinds" value="{{ k }}" {{ 'checked' if not f.dropi_kind or f.dropi_kind == k }}> {{ n }}</label>{% endfor %}</p>
+  </div>
+  <div data-op="remove"><p class="muted dbd-help">Pozycja znika z tabeli. Potwór, któremu nic nie zostanie w grupie, traci drop tego rodzaju (podgląd to pokaże).</p></div>
+
+  <div class="dbd-actions"><button>👁️ Podgląd zmian</button></div>
+  <p class="muted dbd-help">Nic się nie zapisze przed podglądem. Księgi, którą silnik sam dokłada z każdego metina, tu nie ma – ustawiasz ją na stronie {% if 'dbeditor.raredrop' in dbd_endpoints %}<a href="{{ url_for('dbeditor.raredrop') }}#ksiega">Kupony SM, szarfy, Cor → Księga z metinów</a>{% else %}Kupony SM, szarfy, Cor{% endif %}.</p>
+</section>
+{% endif %}
+</form>
+<script>
+(() => {
+  const form = document.getElementById('dbk-form');
+  if (!form) return;
+  const show = (el, on) => { el.style.display = on ? '' : 'none'; el.querySelectorAll('input,select').forEach(i => { i.disabled = !on; }); };
+  function sync() {
+    const op = (form.querySelector('input[name=op]:checked') || {}).value || 'add';
+    form.querySelectorAll('[data-op]').forEach(b => show(b, b.dataset.op.split(' ').includes(op)));
+    const kind = (form.querySelector('.dbk-kind') || {}).value;
+    const want = kind === 'kill' ? ['kill'] : kind === 'limit' ? ['pct', 'limit'] : ['pct'];
+    form.querySelectorAll('[data-op~=add] [data-kind]').forEach(l => { if (op === 'add') show(l, want.includes(l.dataset.kind)); });
+    const mode = (form.querySelector('.dbk-mode') || {}).value;
+    form.querySelectorAll('[data-mode]').forEach(l => { if (op === 'edit') show(l, l.dataset.mode === mode); });
+  }
+  form.addEventListener('change', sync);
+  sync();
+  let timer = null;
+  form.querySelectorAll('.dbk-item').forEach(input => {
+    const out = form.querySelector('[data-name=' + input.name + ']');
+    const look = () => {
+      const q = input.value.trim().replace(/^s/i, '');
+      if (!out) return;
+      if (!/^\d+$/.test(q)) { out.textContent = ''; return; }
+      clearTimeout(timer);
+      timer = setTimeout(() => fetch(form.dataset.api + '?q=' + encodeURIComponent(q), {credentials: 'same-origin'})
+        .then(r => r.json()).then(d => {
+          const hit = (d.items || []).find(it => String(it.vnum) === q);
+          out.textContent = hit ? (/^s/i.test(input.value.trim()) ? 'szkatułka: ' : '') + hit.name : 'NIEZNANY PRZEDMIOT';
+          out.className = hit ? '' : 'dbd-bad';
+        }).catch(() => {}), 250);
+    };
+    input.addEventListener('input', look);
+    look();
+  });
+})();
+</script>
+{% endif %}
+{% endif %}
+{% endblock %}

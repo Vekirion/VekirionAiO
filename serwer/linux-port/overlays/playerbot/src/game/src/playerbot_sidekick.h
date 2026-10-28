@@ -639,6 +639,99 @@ namespace
 	// with it off, by pid.
 	std::set<DWORD> s_setPlayerBotSidekickNoRanged;
 	bool s_bPlayerBotSidekickRangedColumn = false;
+	// MT2009_PLUS_SIDEKICK_TARGETS_V1 [Autor: Vekirion] ("Zaawansowane" in the window): what the companion
+	// fights at all - monsters, Metins, bosses, a bit each, all three by default - and the monster it goes
+	// for before anything else, by a part of its name. A kind switched off is never fought: not at the
+	// owner's target, not when it strikes the owner or the companion, not looked for. With a kind on, the
+	// companion in "Atakuj" also starts on it by itself (a boss or a Metin was only ever fought when the
+	// owner was at it before). Kept in player.playerbot_sidekick.target_kinds (7) and target_name (the
+	// name's CP1250 bytes in hex, '' none); in memory only what is not the default, by pid.
+	enum
+	{
+		PLAYERBOT_SIDEKICK_KIND_MOB = 1,
+		PLAYERBOT_SIDEKICK_KIND_STONE = 2,
+		PLAYERBOT_SIDEKICK_KIND_BOSS = 4,
+		PLAYERBOT_SIDEKICK_KIND_ALL = 7,
+	};
+	const size_t PLAYERBOT_SIDEKICK_TARGET_NAME_MAX = 24;
+	struct TPlayerBotSidekickTargetName
+	{
+		std::string strName;	// as the owner wrote it
+		std::string strLower;	// for the comparison
+	};
+	std::map<DWORD, BYTE> s_mapPlayerBotSidekickKinds;
+	std::map<DWORD, TPlayerBotSidekickTargetName> s_mapPlayerBotSidekickTargetName;
+	bool s_bPlayerBotSidekickTargetColumns = false;
+
+	// MT2009_PLUS_SIDEKICK_TARGETS_V1: CP1250 in lower case - the ASCII letters and the Polish ones.
+	std::string PlayerBotSidekickLowerName(const std::string& in)
+	{
+		std::string out(in);
+		for (size_t i = 0; i < out.size(); ++i)
+		{
+			unsigned char c = (unsigned char)out[i];
+			if (c >= 'A' && c <= 'Z')
+				c = (unsigned char)(c - 'A' + 'a');
+			else if (c == 0xA5) c = 0xB9;	// A,
+			else if (c == 0xC6) c = 0xE6;	// C'
+			else if (c == 0xCA) c = 0xEA;	// E,
+			else if (c == 0xA3) c = 0xB3;	// L/
+			else if (c == 0xD1) c = 0xF1;	// N'
+			else if (c == 0xD3) c = 0xF3;	// O'
+			else if (c == 0x8C) c = 0x9C;	// S'
+			else if (c == 0x8F) c = 0x9F;	// Z'
+			else if (c == 0xAF) c = 0xBF;	// Z.
+			out[i] = (char)c;
+		}
+		return out;
+	}
+
+	// The window sends the name as the hex of its CP1250 bytes (a space or a Polish letter in a chat
+	// command would not arrive whole). False for anything else, or a name too long.
+	bool PlayerBotSidekickHexToName(const char* hex, std::string& out)
+	{
+		out.clear();
+		if (!hex)
+			return false;
+		const size_t len = strlen(hex);
+		if (len == 0 || len % 2 != 0 || len > PLAYERBOT_SIDEKICK_TARGET_NAME_MAX * 2)
+			return false;
+		for (size_t i = 0; i < len; i += 2)
+		{
+			int value = 0;
+			for (size_t j = 0; j < 2; ++j)
+			{
+				const char h = hex[i + j];
+				value <<= 4;
+				if (h >= '0' && h <= '9') value |= h - '0';
+				else if (h >= 'a' && h <= 'f') value |= h - 'a' + 10;
+				else if (h >= 'A' && h <= 'F') value |= h - 'A' + 10;
+				else return false;
+			}
+			if (value < 0x20)
+				return false;
+			out.push_back((char)value);
+		}
+		// no spaces at either end
+		while (!out.empty() && out[0] == ' ')
+			out.erase(0, 1);
+		while (!out.empty() && out[out.size() - 1] == ' ')
+			out.erase(out.size() - 1);
+		return !out.empty();
+	}
+
+	std::string PlayerBotSidekickNameToHex(const std::string& name)
+	{
+		static const char digits[] = "0123456789abcdef";
+		std::string out;
+		for (size_t i = 0; i < name.size(); ++i)
+		{
+			const unsigned char c = (unsigned char)name[i];
+			out.push_back(digits[c >> 4]);
+			out.push_back(digits[c & 15]);
+		}
+		return out;
+	}
 	const DWORD PLAYERBOT_SIDEKICK_EMOTE_REACT_MS = 20 * 1000;
 	const DWORD PLAYERBOT_SIDEKICK_EMOTE_SAY_MS = 90 * 1000;
 	const int PLAYERBOT_SIDEKICK_EMOTE_REACT_PERCENT = 60;	// to a solo emotion of its owner's beside it
@@ -1044,6 +1137,15 @@ namespace
 		if (!s_bPlayerBotSidekickRangedColumn)
 			sys_err("PLAYERBOT_SIDEKICK: no ranged_first column errno=%u",
 					rangedFirst.get() ? rangedFirst->uiSQLErrno : 0U);
+		// MT2009_PLUS_SIDEKICK_TARGETS_V1: the kinds it fights (all) and the name it goes for first (none).
+		std::unique_ptr<SQLMsg> targetColumns(AccountDB::instance().DirectQuery(
+				"ALTER TABLE player.playerbot_sidekick "
+				"ADD COLUMN IF NOT EXISTS target_kinds TINYINT UNSIGNED NOT NULL DEFAULT 7, "
+				"ADD COLUMN IF NOT EXISTS target_name VARCHAR(48) NOT NULL DEFAULT ''"));
+		s_bPlayerBotSidekickTargetColumns = targetColumns.get() && targetColumns->uiSQLErrno == 0;
+		if (!s_bPlayerBotSidekickTargetColumns)
+			sys_err("PLAYERBOT_SIDEKICK: no target_kinds/target_name columns errno=%u",
+					targetColumns.get() ? targetColumns->uiSQLErrno : 0U);
 		// MT2009_PLUS_SIDEKICK_ROSTER_V1: several companions an owner. The
 		// table's key was the owner's; it is the companion's now, and a row
 		// says whether the companion is in the game (active) or on the bench,
@@ -1382,6 +1484,42 @@ namespace
 						off.insert(pid);
 				}
 				s_setPlayerBotSidekickNoRanged.swap(off);
+			}
+		}
+		// MT2009_PLUS_SIDEKICK_TARGETS_V1: the kinds and the names that are not the default.
+		if (s_bPlayerBotSidekickTargetColumns)
+		{
+			std::unique_ptr<SQLMsg> targets(AccountDB::instance().DirectQuery(
+					"SELECT sidekick_pid, target_kinds, target_name FROM player.playerbot_sidekick "
+					"WHERE target_kinds<>7 OR target_name<>''"));
+			if (targets.get() && targets->uiSQLErrno == 0 && targets->Get() && targets->Get()->pSQLResult)
+			{
+				std::map<DWORD, BYTE> kinds;
+				std::map<DWORD, TPlayerBotSidekickTargetName> names;
+				MYSQL_ROW targetRow;
+				while (NULL != (targetRow = mysql_fetch_row(targets->Get()->pSQLResult)))
+				{
+					DWORD pid = 0;
+					unsigned int mask = PLAYERBOT_SIDEKICK_KIND_ALL;
+					if (targetRow[0])
+						str_to_number(pid, targetRow[0]);
+					if (targetRow[1])
+						str_to_number(mask, targetRow[1]);
+					if (pid == 0)
+						continue;
+					mask &= PLAYERBOT_SIDEKICK_KIND_ALL;
+					if (mask != PLAYERBOT_SIDEKICK_KIND_ALL)
+						kinds[pid] = (BYTE)mask;
+					std::string name;
+					if (targetRow[2] && PlayerBotSidekickHexToName(targetRow[2], name))
+					{
+						TPlayerBotSidekickTargetName& entry = names[pid];
+						entry.strName = name;
+						entry.strLower = PlayerBotSidekickLowerName(name);
+					}
+				}
+				s_mapPlayerBotSidekickKinds.swap(kinds);
+				s_mapPlayerBotSidekickTargetName.swap(names);
 			}
 		}
 	}
@@ -1734,6 +1872,55 @@ namespace
 		return s_mapPlayerBotSidekickOwner.find(pid) != s_mapPlayerBotSidekickOwner.end() &&
 				s_setPlayerBotSidekickNoRanged.find(pid) == s_setPlayerBotSidekickNoRanged.end();
 	}
+
+	// MT2009_PLUS_SIDEKICK_TARGETS_V1: the kinds a companion fights (all for anybody else).
+	BYTE GetPlayerBotSidekickTargetKinds(DWORD pid)
+	{
+		std::map<DWORD, BYTE>::const_iterator it = s_mapPlayerBotSidekickKinds.find(pid);
+		return it == s_mapPlayerBotSidekickKinds.end() ? (BYTE)PLAYERBOT_SIDEKICK_KIND_ALL : it->second;
+	}
+
+	BYTE GetPlayerBotSidekickKindOf(LPCHARACTER c)
+	{
+		if (!c || c->IsPC())
+			return 0;
+		if (c->IsStone())
+			return PLAYERBOT_SIDEKICK_KIND_STONE;
+		if (c->IsMonster())
+			return c->GetMobRank() >= MOB_RANK_BOSS ? PLAYERBOT_SIDEKICK_KIND_BOSS : PLAYERBOT_SIDEKICK_KIND_MOB;
+		return 0;
+	}
+
+	// Whether the companion `ch` may fight `c` at all by its owner's kinds. A person (a war, another
+	// kingdom) is not a kind and stays as it was.
+	bool IsPlayerBotSidekickKindAllowed(LPCHARACTER ch, LPCHARACTER c)
+	{
+		if (!ch || !c)
+			return true;
+		const BYTE kinds = GetPlayerBotSidekickTargetKinds(ch->GetPlayerID());
+		if (kinds == PLAYERBOT_SIDEKICK_KIND_ALL)
+			return true;
+		const BYTE kind = GetPlayerBotSidekickKindOf(c);
+		return kind == 0 || (kinds & kind) != 0;
+	}
+
+	const TPlayerBotSidekickTargetName* GetPlayerBotSidekickTargetName(DWORD pid)
+	{
+		std::map<DWORD, TPlayerBotSidekickTargetName>::const_iterator it = s_mapPlayerBotSidekickTargetName.find(pid);
+		return it == s_mapPlayerBotSidekickTargetName.end() ? NULL : &it->second;
+	}
+
+	// Its name holds the owner's words (a part of the name, any case).
+	bool IsPlayerBotSidekickNamedTarget(const TPlayerBotSidekickTargetName* wanted, LPCHARACTER c)
+	{
+		if (!wanted || !c || c->IsPC() || wanted->strLower.empty())
+			return false;
+		const char* name = c->GetName();
+		if (!name || !*name)
+			return false;
+		return PlayerBotSidekickLowerName(name).find(wanted->strLower) != std::string::npos;
+	}
+
 
 	bool IsPlayerBotSidekickSharingLoot(DWORD pid)
 	{
@@ -5270,6 +5457,8 @@ namespace
 		s_mapPlayerBotSidekickEmotions.erase(rec.dwSidekickPID);
 		s_setPlayerBotSidekickNoEmotion.erase(rec.dwSidekickPID);
 		s_setPlayerBotSidekickNoRanged.erase(rec.dwSidekickPID);	// MT2009_PLUS_SIDEKICK_RANGED_FIRST_V1
+		s_mapPlayerBotSidekickKinds.erase(rec.dwSidekickPID);	// MT2009_PLUS_SIDEKICK_TARGETS_V1
+		s_mapPlayerBotSidekickTargetName.erase(rec.dwSidekickPID);
 		s_setPlayerBotSidekickEquipLock.erase(rec.dwSidekickPID);	// MT2009_PLUS_SIDEKICK_EQUIP_LOCK_V1
 		s_setPlayerBotSidekickNoKeep.erase(rec.dwSidekickPID);	// MT2009_PLUS_SIDEKICK_QUICK_TRANSFER_V1
 		if (!rosterLeft)
@@ -5526,6 +5715,60 @@ namespace
 			return "Dobra, najpierw bije lucznikow i magow, ktorzy atakuja ciebie, mnie albo kogos z grupy - "
 					"potem wracam do twojego celu.";
 		return "Dobra, bije po kolei: najpierw twoj cel, potem to, co atakuje ciebie albo mnie.";
+	}
+
+	// MT2009_PLUS_SIDEKICK_TARGETS_V1: the kinds and the name, kept at once.
+	const char* SetPlayerBotSidekickTargetKinds(TPlayerBotSidekick& rec, BYTE kinds)
+	{
+		kinds &= PLAYERBOT_SIDEKICK_KIND_ALL;
+		if (GetPlayerBotSidekickTargetKinds(rec.dwSidekickPID) != kinds)
+		{
+			if (kinds == PLAYERBOT_SIDEKICK_KIND_ALL)
+				s_mapPlayerBotSidekickKinds.erase(rec.dwSidekickPID);
+			else
+				s_mapPlayerBotSidekickKinds[rec.dwSidekickPID] = kinds;
+			if (s_bPlayerBotSidekickTargetColumns)
+				SetPlayerBotSidekickSetting(rec, "target_kinds", kinds);
+			sys_log(0, "PLAYERBOT_SIDEKICK: target kinds owner=%u pid=%u kinds=%u", rec.dwOwnerPID, rec.dwSidekickPID,
+					(unsigned int)kinds);
+		}
+		if (kinds == 0)
+			return "Dobra, nie atakuje zadnych potworow, metinow ani bossow - wlacz cos w oknie Zaawansowane.";
+		if (kinds == PLAYERBOT_SIDEKICK_KIND_ALL)
+			return "Dobra, atakuje potwory, metiny i bossy.";
+		static char text[160];
+		snprintf(text, sizeof(text), "Dobra, atakuje tylko:%s%s%s.",
+				(kinds & PLAYERBOT_SIDEKICK_KIND_MOB) ? " potwory" : "",
+				(kinds & PLAYERBOT_SIDEKICK_KIND_STONE) ? " metiny" : "",
+				(kinds & PLAYERBOT_SIDEKICK_KIND_BOSS) ? " bossy" : "");
+		return text;
+	}
+
+	// name empty: none.
+	const char* SetPlayerBotSidekickTargetName(TPlayerBotSidekick& rec, const std::string& name)
+	{
+		if (name.empty())
+			s_mapPlayerBotSidekickTargetName.erase(rec.dwSidekickPID);
+		else
+		{
+			TPlayerBotSidekickTargetName& entry = s_mapPlayerBotSidekickTargetName[rec.dwSidekickPID];
+			entry.strName = name;
+			entry.strLower = PlayerBotSidekickLowerName(name);
+		}
+		if (s_bPlayerBotSidekickTargetColumns && s_bPlayerBotSidekickSettingsColumns)
+		{
+			char query[192];
+			snprintf(query, sizeof(query), "UPDATE player.playerbot_sidekick SET target_name='%s' WHERE sidekick_pid=%u",
+					PlayerBotSidekickNameToHex(name).c_str(), rec.dwSidekickPID);
+			std::unique_ptr<SQLMsg> msg(AccountDB::instance().DirectQuery(query));
+		}
+		sys_log(0, "PLAYERBOT_SIDEKICK: target name owner=%u pid=%u name=%s", rec.dwOwnerPID, rec.dwSidekickPID,
+				name.c_str());
+		if (name.empty())
+			return "Dobra, nie szukam juz konkretnego potwora.";
+		static char text[160];
+		snprintf(text, sizeof(text), "Dobra, najpierw bije: %s (gdy jest w poblizu).", name.c_str());
+		return text;
 	}
 
 #if defined(PLAYERBOT_ENGINE_MT2009)
@@ -6429,7 +6672,7 @@ namespace
 		// (1 on) after it, and MT2009_PLUS_SIDEKICK_RANGED_FIRST_V1's "Najpierw
 		// dystans" (1 on) last.
 		SendPlayerBotSidekickCommand(owner,
-				"SidekickInfo %d 1 %d %d %d %d %d %d %d %d %d %ld %d %u %u %d %d %lld %u %u %d %d %d %d %d %d %u %d %d %d %d %d %d %d %u %d %d %d",
+				"SidekickInfo %d 1 %d %d %d %d %d %d %d %d %d %ld %d %u %u %d %d %lld %u %u %d %d %d %d %d %d %u %d %d %d %d %d %d %d %u %d %d %d %u %s",
 				PLAYERBOT_SIDEKICK_WINDOW_PROTOCOL,
 				inWorld ? (int)sk->GetRaceNum() : -1, inWorld ? (int)sk->GetSkillGroup() : 0,
 				inWorld ? sk->GetLevel() : 0, expPercent,
@@ -6447,7 +6690,12 @@ namespace
 				(unsigned int)GetPlayerBotSidekickNotify(rec.dwOwnerPID),	// MT2009_PLUS_SIDEKICK_NOTIFY_MUTE_V1
 				IsPlayerBotSidekickSharingLoot(rec.dwSidekickPID) ? 1 : 0,	// MT2009_PLUS_SIDEKICK_NO_LOOT_V1
 				IsPlayerBotSidekickEmotionsOn(rec.dwSidekickPID) ? 1 : 0,	// MT2009_PLUS_SIDEKICK_EMOTIONS_V1
-				IsPlayerBotSidekickRangedFirst(rec.dwSidekickPID) ? 1 : 0);	// MT2009_PLUS_SIDEKICK_RANGED_FIRST_V1
+				IsPlayerBotSidekickRangedFirst(rec.dwSidekickPID) ? 1 : 0,	// MT2009_PLUS_SIDEKICK_RANGED_FIRST_V1
+				// MT2009_PLUS_SIDEKICK_TARGETS_V1: the kinds and the name (hex, "-" none) last.
+				(unsigned int)GetPlayerBotSidekickTargetKinds(rec.dwSidekickPID),
+				GetPlayerBotSidekickTargetName(rec.dwSidekickPID)
+						? PlayerBotSidekickNameToHex(GetPlayerBotSidekickTargetName(rec.dwSidekickPID)->strName).c_str()
+						: "-");
 		char doing[96] = "";
 		char place[64] = "";
 		if (inWorld)
@@ -8521,6 +8769,7 @@ namespace
 	//            | podzial <1 drop dzielony, 0 caly drop dla wlasciciela>	(MT2009_PLUS_SIDEKICK_NO_LOOT_V1)
 	//            | emocje <1 zgoda na emocje we dwoje, 0 bez>	(MT2009_PLUS_SIDEKICK_EMOTIONS_V1)
 	//            | dystans <1 najpierw lucznicy i magowie, 0 po kolei>	(MT2009_PLUS_SIDEKICK_RANGED_FIRST_V1)
+	//            | cele <suma 1 potwory, 2 metiny, 4 bossy> | celnazwa <hex nazwy | ->	(MT2009_PLUS_SIDEKICK_TARGETS_V1)
 	// ------------------------------------------------------------ the roster
 	//
 	// MT2009_PLUS_SIDEKICK_ROSTER_V1: the owner's companions for the window
@@ -8799,6 +9048,7 @@ namespace
 		char a2[32] = "";
 		char a3[64] = "";
 		const char* rest = one_argument(argument ? argument : "", sub, sizeof(sub));
+		const char* subRest = rest;	// MT2009_PLUS_SIDEKICK_TARGETS_V1: "celnazwa" reads past a1's 31 characters
 		rest = one_argument(rest, a1, sizeof(a1));
 		rest = one_argument(rest, a2, sizeof(a2));
 		one_argument(rest, a3, sizeof(a3));
@@ -9006,6 +9256,31 @@ namespace
 				SayPlayerBotSidekick(ch, "Uzyj: /towarzysz dystans 1 (najpierw lucznicy i magowie, ktorzy atakuja "
 						"ciebie, mnie albo grupe) albo /towarzysz dystans 0");
 		}
+		// MT2009_PLUS_SIDEKICK_TARGETS_V1: the kinds it fights (1 monsters, 2 Metins, 4 bosses, summed).
+		else if (!strcmp(sub, "cele"))
+		{
+			int mask = -1;
+			if (*a1)
+				str_to_number(mask, a1);
+			if (*a1 && mask >= 0 && mask <= PLAYERBOT_SIDEKICK_KIND_ALL)
+				SayPlayerBotSidekick(ch, SetPlayerBotSidekickTargetKinds(rec->second, (BYTE)mask));
+			else
+				SayPlayerBotSidekick(ch, "Uzyj: /towarzysz cele <suma: 1 potwory, 2 metiny, 4 bossy> - np. 7 wszystko, "
+						"3 bez bossow");
+		}
+		// MT2009_PLUS_SIDEKICK_TARGETS_V1: the monster it goes for first - its name in hex ("-" none).
+		else if (!strcmp(sub, "celnazwa"))
+		{
+			char hex[PLAYERBOT_SIDEKICK_TARGET_NAME_MAX * 2 + 8] = "";
+			one_argument(subRest ? subRest : "", hex, sizeof(hex));
+			std::string name;
+			if (!strcmp(hex, "-"))
+				SayPlayerBotSidekick(ch, SetPlayerBotSidekickTargetName(rec->second, std::string()));
+			else if (PlayerBotSidekickHexToName(hex, name))
+				SayPlayerBotSidekick(ch, SetPlayerBotSidekickTargetName(rec->second, name));
+			else
+				SayPlayerBotSidekick(ch, "Nazwe potwora ustawisz w oknie towarzysza: Polecenia > Zaawansowane.");
+		}
 		else if (!strcmp(sub, "grupa"))
 		{
 			if (!strcmp(a1, "0") || !strcmp(a1, "1"))
@@ -9198,7 +9473,10 @@ namespace
 			if (!ent || !ent->IsType(ENTITY_CHARACTER))
 				return;
 			LPCHARACTER c = (LPCHARACTER)ent;
-			if (c == self || c == owner || c->IsDead() || !c->IsMonster() || c->GetMapIndex() != mapIndex)
+			// MT2009_PLUS_SIDEKICK_TARGETS_V1: a Metin too (looked for, below), and only the kinds the
+			// owner left on.
+			if (c == self || c == owner || c->IsDead() || (!c->IsMonster() && !c->IsStone()) ||
+					c->GetMapIndex() != mapIndex || !IsPlayerBotSidekickKindAllowed(self, c))
 				return;
 			const int fromOwner = DISTANCE_APPROX(c->GetX() - centreX, c->GetY() - centreY);
 			if (fromOwner > PLAYERBOT_SIDEKICK_GUARD_RANGE)
@@ -9222,8 +9500,19 @@ namespace
 				}
 				return;
 			}
-			if (fromOwner > PLAYERBOT_SIDEKICK_HUNT_RANGE || c->GetMobRank() >= MOB_RANK_BOSS)
+			if (fromOwner > PLAYERBOT_SIDEKICK_HUNT_RANGE)
 				return;
+			// MT2009_PLUS_SIDEKICK_TARGETS_V1: a boss or a Metin is looked for only by a companion whose
+			// owner keeps its kind on in the window ("Zaawansowane"); anybody else's never, as before.
+			{
+				const bool companion = IsPlayerBotSidekickLeashed(self);
+				const BYTE kinds = GetPlayerBotSidekickTargetKinds(self->GetPlayerID());
+				if (c->IsStone() && (!companion || !(kinds & PLAYERBOT_SIDEKICK_KIND_STONE) ||
+						IsPlayerBotEventStone(c->GetRaceNum())))
+					return;
+				if (!c->IsStone() && c->GetMobRank() >= MOB_RANK_BOSS && (!companion || !(kinds & PLAYERBOT_SIDEKICK_KIND_BOSS)))
+					return;
+			}
 			if (fromSelf < idleDist && IsPlayerBotAttackableTarget(self, c))
 			{
 				idle = c;
@@ -9263,6 +9552,8 @@ namespace
 				return;
 			const BYTE battle = c->GetMobBattleType();
 			if (battle != BATTLE_TYPE_RANGE && battle != BATTLE_TYPE_MAGIC)
+				return;
+			if (!IsPlayerBotSidekickKindAllowed(self, c))	// MT2009_PLUS_SIDEKICK_TARGETS_V1
 				return;
 			LPCHARACTER victim = c->GetVictim();
 			if (!victim)
@@ -9674,6 +9965,73 @@ namespace
 		return (DWORD)(b - a) < 0x80000000U ? b : a;
 	}
 
+	// MT2009_PLUS_SIDEKICK_TARGETS_V1: the nearest monster of the owner's name within the guard range of
+	// the centre - before anything else. "Atakuj" goes for it wherever it stands in that range; "Nie 1.
+	// atak" only once it is at the owner, the companion or the party; "Nie walcz" never.
+	struct FPlayerBotSidekickNamedFoe
+	{
+		LPCHARACTER self;
+		LPCHARACTER owner;
+		const TPlayerBotSidekickTargetName* wanted;
+		long centreX;
+		long centreY;
+		long mapIndex;
+		bool onlyInFight;
+		LPCHARACTER best;
+		int bestDist;
+		bool bestOnOwner;
+
+		FPlayerBotSidekickNamedFoe(LPCHARACTER s, LPCHARACTER o, const TPlayerBotSidekickTargetName* w, long x, long y,
+				long map, bool fight)
+			: self(s), owner(o), wanted(w), centreX(x), centreY(y), mapIndex(map), onlyInFight(fight), best(NULL),
+			  bestDist(INT_MAX), bestOnOwner(false)
+		{
+		}
+
+		void operator()(LPENTITY ent)
+		{
+			if (!ent || !ent->IsType(ENTITY_CHARACTER))
+				return;
+			LPCHARACTER c = (LPCHARACTER)ent;
+			if (c == self || c == owner || c->IsDead() || (!c->IsMonster() && !c->IsStone()) ||
+					c->GetMapIndex() != mapIndex || !IsPlayerBotSidekickKindAllowed(self, c))
+				return;
+			if (c->IsStone() && IsPlayerBotEventStone(c->GetRaceNum()))
+				return;
+			if (DISTANCE_APPROX(c->GetX() - centreX, c->GetY() - centreY) > PLAYERBOT_SIDEKICK_GUARD_RANGE)
+				return;
+			LPCHARACTER victim = c->GetVictim();
+			const bool onOwner = owner && victim == owner;
+			if (onlyInFight && !onOwner && victim != self &&
+					!(victim && owner && owner->GetParty() && victim->IsPC() && victim->GetParty() == owner->GetParty()) &&
+					!(c->IsStone() && c->GetHP() < c->GetMaxHP()))
+				return;
+			const int fromSelf = DISTANCE_APPROX(c->GetX() - self->GetX(), c->GetY() - self->GetY());
+			if (fromSelf >= bestDist || !IsPlayerBotSidekickNamedTarget(wanted, c) || !IsPlayerBotAttackableTarget(self, c))
+				return;
+			best = c;
+			bestDist = fromSelf;
+			bestOnOwner = onOwner;
+		}
+	};
+
+	LPCHARACTER FindPlayerBotSidekickNamedFoe(LPCHARACTER ch, LPCHARACTER owner, BYTE stance, LPSECTREE sectree,
+			long x, long y, long mapIndex, int& why)
+	{
+		if (!ch || !sectree || stance == PLAYERBOT_SIDEKICK_STANCE_PASSIVE)
+			return NULL;
+		const TPlayerBotSidekickTargetName* wanted = GetPlayerBotSidekickTargetName(ch->GetPlayerID());
+		if (!wanted)
+			return NULL;
+		FPlayerBotSidekickNamedFoe named(ch, owner, wanted, x, y, mapIndex, stance != PLAYERBOT_SIDEKICK_STANCE_ATTACK);
+		sectree->ForEachAround(named);
+		if (!named.best)
+			return NULL;
+		why = named.bestOnOwner ? PLAYERBOT_SIDEKICK_FOE_AT_OWNER
+				: named.best->GetVictim() == ch ? PLAYERBOT_SIDEKICK_FOE_AT_SELF : PLAYERBOT_SIDEKICK_FOE_NEARBY;
+		return named.best;
+	}
+
 	// ownerFighting: the owner's target is a fight under way or a monster is
 	// at the owner - told in every stance, "nie walcz" included, because beside
 	// the owner's fight the owner's buffs come first.
@@ -9681,6 +10039,17 @@ namespace
 			bool& ownerFighting)
 	{
 		ownerFighting = IsPlayerBotSidekickOwnerTargetInFight(ch, owner);
+		// MT2009_PLUS_SIDEKICK_TARGETS_V1: the monster of the owner's name before everything.
+		{
+			LPCHARACTER named = FindPlayerBotSidekickNamedFoe(ch, owner, stance, owner->GetSectree(), owner->GetX(),
+					owner->GetY(), owner->GetMapIndex(), why);
+			if (named)
+			{
+				if (why == PLAYERBOT_SIDEKICK_FOE_AT_OWNER)
+					ownerFighting = true;
+				return named;
+			}
+		}
 		// MT2009_PLUS_SIDEKICK_DEFEND_V1: another kingdom's attackers come
 		// before the owner's target and every monster.
 		LPCHARACTER defend = FindPlayerBotSidekickDefendFoe(ch, owner, stance, owner->GetX(), owner->GetY(), why);
@@ -9711,6 +10080,7 @@ namespace
 				DISTANCE_APPROX(target->GetX() - owner->GetX(), target->GetY() - owner->GetY()) <=
 						PLAYERBOT_SIDEKICK_ASSIST_RANGE &&
 				(stance == PLAYERBOT_SIDEKICK_STANCE_ATTACK || IsPlayerBotSidekickFightUnderWay(ch, owner, target)) &&
+				IsPlayerBotSidekickKindAllowed(ch, target) &&	// MT2009_PLUS_SIDEKICK_TARGETS_V1
 				IsPlayerBotAttackableTarget(ch, target))
 		{
 			why = PLAYERBOT_SIDEKICK_FOE_OWNER_TARGET;
@@ -11714,6 +12084,19 @@ namespace
 				if (why == PLAYERBOT_SIDEKICK_FOE_AT_OWNER)
 					rt.dwOwnerFightSeenAt = dwNow;
 				LogPlayerBotSidekickDefend(ch, sameMapOwner, defend, why, dwNow);
+			}
+		}
+		// MT2009_PLUS_SIDEKICK_TARGETS_V1: the monster of the owner's name near the spot before everything.
+		{
+			int namedWhy = PLAYERBOT_SIDEKICK_FOE_NEARBY;
+			LPCHARACTER named = FindPlayerBotSidekickNamedFoe(ch, sameMapOwner, rec.bStance, ch->GetSectree(),
+					rt.lHoldX, rt.lHoldY, rt.lHoldMap, namedWhy);
+			if (named)
+			{
+				foe = named;
+				why = namedWhy;
+				if (why == PLAYERBOT_SIDEKICK_FOE_AT_OWNER)
+					rt.dwOwnerFightSeenAt = dwNow;
 			}
 		}
 		// The owner near the spot is buffed as at its side, but a waiting

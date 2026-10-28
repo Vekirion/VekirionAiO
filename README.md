@@ -1,4 +1,4 @@
-# Vekirion AiO 2.3.1 – paczka modów do MT2009 PLUS
+# Vekirion AiO 2.5.1 – paczka modów do MT2009 PLUS
 
 Zestaw modów klienta i serwera do **MT2009 PLUS** (singleplayer Metin2 z botami), z instalatorem,
 w którym wybierasz, które mody wgrać.
@@ -42,7 +42,9 @@ w którym wybierasz, które mody wgrać.
 | 17 | **Ulepszanie co 0,2 s** zamiast co 1 s | S |
 | 18 | **Nieodpychanie bossów** – boss nie odjeżdża po ciosach i skillach gracza, a jego skille nie odpychają gracza | S |
 | 19 | **Nieodpychanie mobów (wszystkich)** – to samo co 18 dla każdego potwora (obejmuje 18) | S |
-| 20 | **Kupowanie ze stosów** – boty porównują oferty po cenie za sztukę i częściej kupują część stosu zamiast droższej pojedynczej sztuki | S |
+| 20 | **Kupowanie ze stosów** – boty porównują oferty po cenie za sztukę i częściej kupują część stosu zamiast droższej pojedynczej sztuki; wybraną ofertę porównują z innymi ofertami tego samego przedmiotu w zasięgu | S |
+| 21 | **Wieża Demonów** – po Kosiarzu 15 minut zamiast 10 s, Strażnik Wieży z opcją „Wyjdź z wieży” (prosto przed wieżę, jeden teleport); na piętrze z pieczęciami potwory wracają co 60 s zamiast 180 s | S |
+| 22 | **Panel: drop – zmiana masowa** (filtry potworów, dodaj / zmień / usuń drop naraz, z podglądem) i **księga z metinów** (wyłączenie albo inny przedmiot zamiast 50300) | S |
 
 > **2.2.1: mody mają nowe numery** (po kolei, bez przerw): 06→04, 11→05, 12→06, 13→07, 14→08, 18→09,
 > 19→10, 22→11, 23→12, 25→13, 26→14, 27→15, 28→16, 29→17. Instalator sam przelicza zapisany wybór
@@ -64,7 +66,7 @@ Limity towarzyszy ustawiasz w `docker/.env`: `M2_SIDEKICK_MAX_ACTIVE=2` (1–6),
 
 ## Instalacja
 
-Pobierz paczkę z [Releases](../../releases) albo `git clone` i rozpakuj folder `Vekirion_AiO_2.3.1`.
+Pobierz paczkę z [Releases](../../releases) albo `git clone` i rozpakuj folder `Vekirion_AiO_2.5.1`.
 
 ### Windows – wybrane mody (zalecane)
 
@@ -116,7 +118,7 @@ zostaje usunięty. **Po każdym użyciu `MT2009-Patcher.exe` uruchom instalator 
    cd /opt/mt2009/linux-port/docker && docker compose up -d --build
    ```
 
-Ręczne kopiowanie wgrywa **wszystkie** mody serwera (z 18 i 19 – wersję 19, która obejmuje bossów; także 20). Żeby wybrać tylko niektóre, użyj
+Ręczne kopiowanie wgrywa **wszystkie** mody serwera (z 18 i 19 – wersję 19, która obejmuje bossów; także 20, 21 i 22). Żeby wybrać tylko niektóre, użyj
 `Wybierz_mody.bat` (część „serwer”) na komputerze, który widzi folder `linux-port`.
 
 ---
@@ -140,7 +142,7 @@ Ręczne kopiowanie wgrywa **wszystkie** mody serwera (z 18 i 19 – wersję 19, 
 ## Struktura
 
 ```
-Vekirion_AiO_2.3.1/
+Vekirion_AiO_2.5.1/
   Wybierz_mody.bat        instalator z wyborem modów (Windows)
   CZYTAJ.txt              opis modów i instalacji
   klient/

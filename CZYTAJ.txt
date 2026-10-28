@@ -1,9 +1,22 @@
-﻿WERSJA 2.3.1: klient MT2009 PLUS 2.0.70, serwer MT2009 PLUS VERSION 2.39.0 (28.10.2026).
+﻿WERSJA 2.5.1: klient MT2009 PLUS 2.0.70, serwer MT2009 PLUS VERSION 2.39.0 (28.10.2026).
 Starsze wersje klienta (2.0.68 i niżej) są nieaktualne i nieobsługiwane – zaktualizuj klienta
 MT2009-Patcher.exe. Na kliencie 2.0.67 / serwerze 2.36.0 użyj paczki 2.1.1, na serwerze 2.37.0 – paczki 2.2.1, na serwerze 2.37.1 – paczki 2.2.2.
 
 NUMERACJA WERSJI: poprawki podnoszą ostatnią cyfrę (2.1.1 -> 2.1.2), nowe funkcje środkową
 (2.1.x -> 2.2.1).
+
+ZMIANY W 2.5.1
+--------------
+- Nowy mod (serwer): 22. Panel: drop – zmiana masowa + księga z metinów (dawniej osobna paczka
+  „mod 21 luzem” – teraz ma numer 22, bo 21 to Wieża Demonów).
+- Mod 14 (towarzysz): okno „Zaawansowane” zamiast przycisku „Dystans”, priorytet konkretnego
+  potwora po nazwie i celowanie skilli obszarowych w środek grupy – opis przy 14.
+
+ZMIANY W 2.4.1
+--------------
+- Nowy mod (serwer): 21. Wieża Demonów – spokojne wyjście i szybsze pieczęcie.
+- Mod 20: wybraną ofertę bot porównuje z innymi ofertami tego samego przedmiotu w zasięgu (do 48)
+  (dotąd widział tylko okno 64 linii, więc 61 pojedynczych sztuk przesłaniało tańszy stos).
 
 ZMIANY W 2.3.1
 --------------
@@ -85,6 +98,21 @@ CO JEST W PACZCE
     .env.example, mariadb\playerbot\apply.sh.
     Klient i serwer muszą mieć 14 oba albo żaden.
     21.10: poprawione uisidekickaffects.py i uisidekickroster.py
+    2.5.1 (marker MT2009_PLUS_SIDEKICK_TARGETS_V1, MT2009_PLUS_SIDEKICK_SPLASH_AIM_V1; nowy plik klienta
+    uisidekicktargets.py, nowy plik serwera playerbot_combat.h – też w overlays):
+    - Polecenia > Walka: „Zaawansowane” zamiast „Dystans”. Okno ma:
+      · Potwory / Metiny / Bossy – przycisk wciśnięty = towarzysz walczy z tym rodzajem. Wyłączony
+        rodzaj nie jest atakowany wcale: ani Twój cel, ani to, co bije Ciebie lub jego, ani sam go
+        nie szuka. Domyślnie wszystkie trzy włączone – wtedy w „Atakuj” sam zaczyna też metiny
+        i bossy w pobliżu (dotąd tylko gdy Ty je biłeś). Wyłącz Metiny / Bossy, jeśli tego nie chcesz;
+      · Dystans: tak / nie – dawny przycisk (najpierw łucznicy i magowie bijący Ciebie, jego, grupę);
+      · Najpierw ten potwór – wpisz nazwę albo jej część (wielkość liter bez znaczenia), Ustaw /
+        Wyczyść. Najbliższy taki potwór w pobliżu idzie przed wszystkim innym. W „Nie 1. atak” –
+        dopiero gdy bije Ciebie, jego albo grupę; w „Nie walcz” nigdy.
+      Ustawienia zapisują się w bazie (kolumny target_kinds, target_name dodają się same).
+    - Skille obszarowe (szaman, sura...): towarzysz rzuca je w potwora, wokół którego stoi
+      najwięcej innych (tylko potwory już walczące, nie bossy ani metiny), gdy trafi tak co
+      najmniej 2 potwory więcej niż w obecny cel. Tylko towarzysze, inne boty bez zmian.
 15. Bez kontroli speedhacka: input_main.cpp – bez cofania przy
     rozjeździe pozycji, bez „trying to move too far”/SYNC_HACK, bez kontroli szybkości ruchu co 1,5 s,
     zegara klienta i tempa combo (przełącznik #define MT2009_PLUS_NO_SPEEDHACK_CHECK); battle.cpp –
@@ -114,7 +142,31 @@ CO JEST W PACZCE
       wiosce);
     - próbę kupna części stosu bot zużywa tylko na stos, z którego chce choć 1 sztukę (dawniej
       8 prób szło na pierwsze lepsze stosy w oknie, np. mikstury, których nie potrzebował);
-    - prób na jedno przeglądanie rynku jest 16 zamiast 8.
+    - prób na jedno przeglądanie rynku jest 16 zamiast 8;
+    - (2.4.1, marker MT2009_PLUS_BOT_STACK_BUY_V2) bot przegląda rynek oknami po 64 linie, więc
+      tańszy stos stojący kilka linii dalej niż pojedyncze sztuki zwykle nie trafiał do okna. Teraz po
+      wyborze oferty bot sprawdza do 48 innych ofert tego samego przedmiotu w sklepach w zasięgu
+      i bierze najtańszą za sztukę. Oceniane są tak samo jak dotąd, więc oferta gracza dalej
+      wygrywa z ofertą bota, dopóki jest najwyżej o 10% (ustawienie z panelu) droższa.
+21. Wieża Demonów (serwer: game\quest\deviltower_zone.quest, serverfiles\share\data\dungeon\
+    deviltower5_regen.txt; marker MT2009_PLUS_DT_EXIT_V1):
+    - po zabiciu Kosiarza (ostatnie piętro) wieża zostaje otwarta 15 minut zamiast 10 sekund,
+      z ogłoszeniami po 15, 10, 5, 2 i 1 minucie, 30 i 10 sekundach i od 5 do 1;
+    - na piętrze pojawia się Strażnik Wieży z opcją „Wyjdź z wieży” – przenosi prosto przed
+      wieżę, obok Strażnika Wieży Demonów. Tam też trafiają wszyscy po upływie 15 minut;
+    - wyjście z wieży (koniec, nieudane piętro, ponowne zalogowanie po wyrzuceniu z gry) to jeden
+      teleport – dotąd gra przenosiła na parter, a stamtąd od razu drugi raz przed wieżę, co
+      potrafiło wyrzucić z gry. Boty dalej wychodzą na parter (tego oczekuje ich logika wieży);
+    - piętro z pieczęciami: potwory wracają co 60 s zamiast 180 s (pieczęć dalej co 50 zabitych).
+    Przedmioty na ziemi znikają po zwykłym czasie gry, więc łup i tak zbierz od razu.
+22. Panel: drop – zmiana masowa + księga z metinów (serwer: docker\seban-panel – dbeditor\
+    drops_bulk.py (nowy), __init__.py, raredrop.py, templates\dbeditor\drops_bulk.html (nowy),
+    drops.html, drops_head.html, drops_set.html, raredrop.html, testy; item_manager.cpp; markery
+    MT2009_PLUS_DROP_BULK_V1, MT2009_PLUS_METIN_BOOK_SWITCH_V1):
+    - Edytor bazy danych > Drop > „Zmiana masowa”: filtry (nazwa lub VNUM-y, typ, ranga, poziom,
+      mapa, „dropi X”), operacje dodaj / zmień / usuń, najpierw podgląd;
+    - księga z metinów (strona „Kupony SM, szarfy, Cor”): wyłączenie albo inny przedmiot zamiast 50300.
+    Zmiany dropu i księgi działają po „Zastosuj” w panelu. Z modem 12 item_manager.cpp ma oba mody.
 
 KLIENT
 ------
@@ -160,6 +212,9 @@ SERWER
        char_item.cpp (05, 06, 10, 16), target.cpp (05), ikarus_shop_manager.cpp, auction_house.cpp (09),
        input_main.cpp (09, 15, 17), battle.cpp (15), item_manager.cpp (12),
        char.cpp, char_skill.cpp, char_battle.cpp (19 – obejmuje 18), playerbot_offline_market.h (20).
+       21: game\quest\deviltower_zone.quest, src\serverfiles\share\data\dungeon\deviltower5_regen.txt
+       22: docker\seban-panel (pliki wyżej), item_manager.cpp (12 + 22)
+       14 (2.5.1): też playerbot_combat.h (w game\src i overlays)
        14: input_login.cpp, playerbot_manager.cpp, playerbot_sidekick.h (też w overlays\playerbot\src\game\src),
        game\quest\towarzysz.quest, docker-compose.yml, .env.example, mariadb\playerbot\apply.sh
     2. Do docker\game\src\serverfiles\share\locale\poland\locale_string.txt dopisz na końcu

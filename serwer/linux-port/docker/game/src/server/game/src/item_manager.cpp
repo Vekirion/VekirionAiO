@@ -1125,6 +1125,23 @@ static bool Mt2009PlusRareTableRowOff(DWORD vnum, bool stone, bool boss)
 	return Mt2009PlusRareDropOff(Mt2009PlusRareDropKind(vnum), stone);
 }
 
+// MT2009_PLUS_METIN_BOOK_SWITCH_V1 [Autor: Vekirion]: the one item every Metin tops its drop
+// up to (CreateDropItem, the autohunt preview and the target window preview below), set in
+// the panel ("Kupony SM, szarfy, Cor" -> "Ksiega z metinow") as two world event flags:
+//   m2_metin_book_off  1 = the engine adds nothing (only the drop tables give books);
+//   m2_metin_book_vnum the item added instead of the Skill Book 50300 (0 = 50300).
+// No row / 0 = the old behaviour. A VNUM missing from item_proto falls back to 50300.
+static DWORD Mt2009PlusMetinBookVnum()
+{
+	quest::CQuestManager& quests = quest::CQuestManager::instance();
+	if (quests.GetEventFlag("m2_metin_book_off") != 0)
+		return 0;
+	const int vnum = quests.GetEventFlag("m2_metin_book_vnum");
+	if (vnum <= 0 || !ITEM_MANAGER::instance().GetTable((DWORD) vnum))
+		return 50300;
+	return (DWORD) vnum;
+}
+
 // MT2009_PLUS_SASH_CLOTH_V1 (server-patches/raremobrules): "Delikatne Sukno" (80019) in place of the
 // +0 sash (the owner, 6 October: "z metinow i bossow leci Delikatne Sukno"). The roll is the
 // sash's own - a boss 80%, a Metin 15%, the per-mob rules above (WuKong 15%, none from the
@@ -1423,17 +1440,19 @@ bool ITEM_MANAGER::CreateDropItem(LPCHARACTER pkChr, LPCHARACTER pkKiller, std::
 	// top-up ignored it, and a player of forty-six farmed level-five stones
 	// for a guaranteed book each ("Drop z metinow", 12 September). Fifteen
 	// levels over the stone is where the top-up ends.
-	if (pkChr->IsStone() && pkKiller &&
+	// MT2009_PLUS_METIN_BOOK_SWITCH_V1 [Autor: Vekirion]: the item (and whether at all) from the panel.
+	const DWORD dwMetinBookVnum = pkChr->IsStone() ? Mt2009PlusMetinBookVnum() : 0;
+	if (dwMetinBookVnum && pkChr->IsStone() && pkKiller &&
 			(Mt2009PlusNoLevelFade(pkKiller) ||	// MT2009_PLUS_DROP_NO_LEVEL_FADE_V1 (book)
 			 pkKiller->GetLevel() <= pkChr->GetLevel() + PLAYERBOT_METIN_BOOK_LEVEL_DELTA))
 	{
 		int books = 0;
 		for (size_t i = 0; i < vec_item.size(); ++i)
-			if (vec_item[i] && vec_item[i]->GetVnum() == 50300)
+			if (vec_item[i] && vec_item[i]->GetVnum() == dwMetinBookVnum)
 				++books;
 		for (; books < 1; ++books)
 		{
-			item = CreateItem(50300, 1, 0, true);
+			item = CreateItem(dwMetinBookVnum, 1, 0, true);
 			if (item) vec_item.emplace_back(item);
 		}
 	}
@@ -2721,9 +2740,11 @@ void ITEM_MANAGER::GetPossibleMobDropItems(LPCHARACTER pkKiller, LPCHARACTER pkC
 				out_vnums.insert(pkChr->GetDropMetinStoneVnum());
 		}
 
-		if (Mt2009PlusNoLevelFade(pkKiller) ||	// MT2009_PLUS_DROP_NO_LEVEL_FADE_V1 (preview)
-				pkKiller->GetLevel() <= pkChr->GetLevel() + PLAYERBOT_METIN_BOOK_LEVEL_DELTA)
-			out_vnums.insert(50300);
+		// MT2009_PLUS_METIN_BOOK_SWITCH_V1 [Autor: Vekirion]
+		const DWORD dwMetinBookVnum = Mt2009PlusMetinBookVnum();
+		if (dwMetinBookVnum && (Mt2009PlusNoLevelFade(pkKiller) ||	// MT2009_PLUS_DROP_NO_LEVEL_FADE_V1 (preview)
+				pkKiller->GetLevel() <= pkChr->GetLevel() + PLAYERBOT_METIN_BOOK_LEVEL_DELTA))
+			out_vnums.insert(dwMetinBookVnum);
 	}
 
 	// Moonlight Treasure Chest and the Dragon Coin voucher: CONFIG permille,
@@ -3057,7 +3078,10 @@ void ITEM_MANAGER::SendMobDropPreview(LPCHARACTER viewer, LPCHARACTER mob)
 			if ((Mt2009PlusNoLevelFade(viewer) ||	// MT2009_PLUS_DROP_NO_LEVEL_FADE_V1 (preview)
 					viewer->GetLevel() <= mob->GetLevel() + PLAYERBOT_METIN_BOOK_LEVEL_DELTA) && !Mt2009PlusDungeonMob(race))
 			{
-				AddMobPreviewItem(lines, 50300, 1);
+				// MT2009_PLUS_METIN_BOOK_SWITCH_V1 [Autor: Vekirion]
+				const DWORD dwMetinBookVnum = Mt2009PlusMetinBookVnum();
+				if (dwMetinBookVnum)
+					AddMobPreviewItem(lines, dwMetinBookVnum, 1);
 				if (g_iBlessingScrollStonePermille > 0 &&
 						mob->GetLevel() >= PLAYERBOT_BLESSING_SCROLL_STONE_MIN_LEVEL &&
 						mob->GetLevel() <= PLAYERBOT_BLESSING_SCROLL_STONE_MAX_LEVEL)
@@ -3297,7 +3321,10 @@ void ITEM_MANAGER::GetDropWikiRows(DWORD race, std::vector<TDropWikiRow>& rows)
 		if (stone)
 		{
 			// The guaranteed book (topped up to one).
-			DropWikiAdd(rows, 50300, 1, 1.0);
+			// MT2009_PLUS_METIN_BOOK_SWITCH_V1 [Autor: Vekirion]: the panel's item, or none.
+			const DWORD dwMetinBookVnum = Mt2009PlusMetinBookVnum();
+			if (dwMetinBookVnum)
+				DropWikiAdd(rows, dwMetinBookVnum, 1, 1.0);
 			if (g_iBlessingScrollStonePermille > 0 &&
 					level >= PLAYERBOT_BLESSING_SCROLL_STONE_MIN_LEVEL &&
 					level <= PLAYERBOT_BLESSING_SCROLL_STONE_MAX_LEVEL)

@@ -339,6 +339,10 @@ TEXT_EMOTIONS_HINT = 'Emocje we dwoje (poca\xb3unek, klepni\xeacie) bez pytania 
 # Walka bar, left of "Emocje" (the Options page has no line left), off and on.
 TEXT_RANGED_STATES = ('Dystans: nie', 'Dystans: tak')
 TEXT_RANGED_HINT = 'Najpierw dystans: \xb3ucznicy i magowie, kt\xf3rzy bij\xb9 ciebie, jego lub grup\xea.'
+# MT2009_PLUS_SIDEKICK_TARGETS_V1: "Zaawansowane" in the place of "Dystans" - the panel of what it fights
+# (monsters, Metins, bosses), "Najpierw dystans" and the monster it goes for first (uisidekicktargets.py).
+TEXT_ADVANCED = 'Zaawansowane'
+TEXT_ADVANCED_HINT = 'Kogo atakuje: potwory, metiny, bossy, najpierw dystans, konkretny potw\xf3r.'
 TEXT_SECTION_BEHAVIOUR = 'Zachowanie'
 TEXT_SECTION_POINTS = 'Punkty'
 # MT2009_PLUS_SIDEKICK_PANELS_V1: the panels of its costumes and its Alchemy,
@@ -632,6 +636,12 @@ def ParseInfo(args):
 	# MT2009_PLUS_SIDEKICK_RANGED_FIRST_V1: "Najpierw dystans" last (1 on, the default).
 	if len(values) >= len(names) + 17:
 		info['ranged'] = ParseInt(values[len(names) + 16], 1)
+	# MT2009_PLUS_SIDEKICK_TARGETS_V1: the kinds it fights (1 monsters, 2 Metins, 4 bosses) and the
+	# monster it goes for first (hex, "-" none), last - the "Zaawansowane" panel (uisidekicktargets.py).
+	if len(values) >= len(names) + 19:
+		info['kinds'] = ParseInt(values[len(names) + 17], 7)
+		hexName = values[len(names) + 18]
+		info['target_name'] = '' if hexName == '-' else DecodeText(hexName)
 	return info
 
 
@@ -1405,10 +1415,11 @@ class SidekickWindow(ui.ScriptWindow):
 			158 - 3, '', self.OnEmotions)
 		self._Hover(self.emotionsButton, TEXT_EMOTIONS_HINT)
 		self.emotionsButton.Hide()
-		# MT2009_PLUS_SIDEKICK_RANGED_FIRST_V1: "Dystans: tak / nie" beside it.
+		# MT2009_PLUS_SIDEKICK_RANGED_FIRST_V1: "Dystans: tak / nie" beside it -
+		# MT2009_PLUS_SIDEKICK_TARGETS_V1: now "Zaawansowane", whose panel holds it.
 		self.rangedButton = self._Btn(page, 'large', SECTION_X + SECTION_WIDTH - 2 * BUTTON_WIDTHS['large'] - 4,
-			158 - 3, '', self.OnRanged)
-		self._Hover(self.rangedButton, TEXT_RANGED_HINT)
+			158 - 3, TEXT_ADVANCED, self.OnAdvancedPanel)
+		self._Hover(self.rangedButton, TEXT_ADVANCED_HINT)
 		self.rangedButton.Hide()
 		self.stanceButtons = []
 		for i, text in enumerate(STANCES):
@@ -1783,7 +1794,9 @@ class SidekickWindow(ui.ScriptWindow):
 			self.emotionsButton.Hide()
 		# MT2009_PLUS_SIDEKICK_RANGED_FIRST_V1: shown by a server that sends it.
 		if 'ranged' in info:
-			self.rangedButton.SetText(TEXT_RANGED_STATES[1 if info['ranged'] else 0])
+			# MT2009_PLUS_SIDEKICK_TARGETS_V1: "Zaawansowane" (the switch is in its panel); an older
+			# server with "Najpierw dystans" alone keeps the switch here.
+			self.rangedButton.SetText(TEXT_ADVANCED if 'kinds' in info else TEXT_RANGED_STATES[1 if info['ranged'] else 0])
 			self.rangedButton.Show()
 		else:
 			self.rangedButton.Hide()
@@ -2044,6 +2057,14 @@ class SidekickWindow(ui.ScriptWindow):
 		on = self.info.get('ranged', 1) if self.info else 1
 		self.SendCommand('dystans %d' % (0 if on else 1))
 		self.nextPoll = 0.0
+
+	# MT2009_PLUS_SIDEKICK_TARGETS_V1: the panel, or the old switch with an older server.
+	def OnAdvancedPanel(self):
+		if self.info and 'kinds' not in self.info:
+			self.OnRanged()
+			return
+		import uisidekicktargets
+		uisidekicktargets.ToggleWindow(self)
 
 	def OnShareLoot(self):
 		share = self.info.get('share_loot', 1) if self.info else 1
@@ -2513,6 +2534,9 @@ def Destroy():
 	# MT2009_PLUS_SIDEKICK_ROSTER_V1: and the roster window.
 	if 'uisidekickroster' in sys.modules:
 		_GuardedDestroy('roster', sys.modules['uisidekickroster'].Destroy)
+	# MT2009_PLUS_SIDEKICK_TARGETS_V1: and the "Zaawansowane" panel.
+	if 'uisidekicktargets' in sys.modules:
+		_GuardedDestroy('targets', sys.modules['uisidekicktargets'].Destroy)
 	ResetCommands()
 
 
