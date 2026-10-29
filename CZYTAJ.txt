@@ -1,9 +1,13 @@
-﻿WERSJA 2.5.1: klient MT2009 PLUS 2.0.70, serwer MT2009 PLUS VERSION 2.39.0 (28.10.2026).
+﻿WERSJA 2.6.1: klient MT2009 PLUS 2.0.70, serwer MT2009 PLUS VERSION 2.39.0 (28.10.2026).
 Starsze wersje klienta (2.0.68 i niżej) są nieaktualne i nieobsługiwane – zaktualizuj klienta
 MT2009-Patcher.exe. Na kliencie 2.0.67 / serwerze 2.36.0 użyj paczki 2.1.1, na serwerze 2.37.0 – paczki 2.2.1, na serwerze 2.37.1 – paczki 2.2.2.
 
-NUMERACJA WERSJI: poprawki podnoszą ostatnią cyfrę (2.1.1 -> 2.1.2), nowe funkcje środkową
-(2.1.x -> 2.2.1).
+ZMIANY W 2.6.1
+--------------
+- Nowy mod (serwer): 23. Rebalans botów (MT2009_PLUS_BOT_REBALANCE_V1) – opis i flagi:
+  serwer\rebalans\README_PL.md.
+- Mod 03 (autołowy): czekanie na drop z metina, zbieranie klawiszem Z, obrót na wierzchowcu
+  przed ruszeniem – opis przy 03.
 
 ZMIANY W 2.5.1
 --------------
@@ -68,6 +72,16 @@ CO JEST W PACZCE
     (ime.IsCaptureInput) bez żadnego pola do pisania – poprawka czekała na koniec pisania.
     Teraz liczy się, czy wciśnięcie klawisza ruchu trafiło do gry.
 03. Autołowy bez skakania między celami przy ścianach.
+    2.6.1 (markery MT2009_PLUS_AUTOHUNT_STONE_LOOT_V1, MT2009_PLUS_AUTOHUNT_MOUNT_TURN_V1):
+    - Ustawienia autołowów > Podnoszenie, wiersz „Drop:” – dwa przełączniki (domyślnie Tak,
+      zapisują się od razu dla postaci):
+      · Metin – po zbiciu metina postać zostaje przy nim 2,5 s (podchodzi, jeśli drop leży dalej)
+        i zbiera, zanim weźmie następny cel. Przerywa przy zdrowiu poniżej 35%;
+      · Z – zbieranie jak klawiszem Z: wszystkie wybrane przedmioty w zasięgu 600 naraz
+        (filtr Ctrl+Z działa), zamiast jednego przedmiotu na raz.
+    - Na wierzchowcu (bez trybu bojowca): w pobliżu celu postać najpierw staje i obraca się
+      do niego, dopiero potem rusza. Gdy przez 1,2 s nie zbliża się do celu (jeździ wokół),
+      zatrzymuje się, obraca i rusza od nowa.
 04. Ctrl+PPM otwiera też karty/skrzynki 50283, 50284, 79604, 79506, 79508.
 05. Wykrywacz Bossów (przedmiot 76009) i zmiany wykrywacza metinów
     v2 (16.10): znacznik metina/bossa widać na mapie i minimapie w całej mapie, nie tylko
@@ -167,6 +181,23 @@ CO JEST W PACZCE
       mapa, „dropi X”), operacje dodaj / zmień / usuń, najpierw podgląd;
     - księga z metinów (strona „Kupony SM, szarfy, Cor”): wyłączenie albo inny przedmiot zamiast 50300.
     Zmiany dropu i księgi działają po „Zastosuj” w panelu. Z modem 12 item_manager.cpp ma oba mody.
+23. Rebalans botów (serwer: playerbot_alchemy.h, _config.h, _consumables.h, _economy.h,
+    _farmer_link.h, _gear.h, _manager.cpp, _offline_shop.h, _survival.h, _types.h,
+    _upstream_botlogic.h, _workshop.h + nowy playerbot_rebalance.h – w game\src i w overlays;
+    marker MT2009_PLUS_BOT_REBALANCE_V1). Pełny opis, flagi i zapytania SQL do sprawdzenia:
+    serwer\rebalans\README_PL.md. W skrócie:
+    - blokady expa Grindera jako przerwy (+5 poziomów co 3 dni, flaga reb_lock_break_days),
+      postać główna nigdy poniżej swojego dropka;
+    - Rada Pustelnika, Egzorcyzm i Zwój Wojny z craftingu / targu (m2_bot_craft_errand_off=1 wyłącza),
+      księgi do 5 na umiejętność;
+    - zwoje, bonusy i Kamienie Duszy od +4, broń oceniana po obrażeniach;
+    - alchemia: wszystkie Cor Draconis, cele stopni wg poziomu;
+    - zgony w Lochu Małp (restart w punkcie mapy), rotacja botów (m2_bot_rotation=1 + LIFE_HOURS),
+      więcej gildii;
+    - mniej śmieci +0…+2 na straganach (4 na vnum), 5–8 przecen dziennie;
+    - polityka przedmiotów „limit N [grupa]” w playerbot_item_policy.tsv (np. pierścienie z dyń).
+    playerbot_manager.cpp ma warianty z modem 14 i bez. Autor zmian nie kompilował – po przebudowie
+    sprawdź błędy/ostrzeżenia.
 
 KLIENT
 ------
@@ -215,6 +246,7 @@ SERWER
        21: game\quest\deviltower_zone.quest, src\serverfiles\share\data\dungeon\deviltower5_regen.txt
        22: docker\seban-panel (pliki wyżej), item_manager.cpp (12 + 22)
        14 (2.5.1): też playerbot_combat.h (w game\src i overlays)
+       23: pliki playerbot_* wyżej (w game\src i overlays), playerbot_manager.cpp z modami 14 + 23
        14: input_login.cpp, playerbot_manager.cpp, playerbot_sidekick.h (też w overlays\playerbot\src\game\src),
        game\quest\towarzysz.quest, docker-compose.yml, .env.example, mariadb\playerbot\apply.sh
     2. Do docker\game\src\serverfiles\share\locale\poland\locale_string.txt dopisz na końcu

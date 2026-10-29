@@ -199,6 +199,26 @@ STATUS_INTERVAL = 0.3
 MELEE_REACH = 200
 ARCHER_REACH = 2400
 STOP_SHORT_SHARE = 0.6
+# MT2009_PLUS_AUTOHUNT_STONE_LOOT_V1 [Autor: Vekirion]: after a Metin falls the hunter stays by it
+# STONE_WAIT_SECONDS for its drop, and with "Z" on it picks up with the Z key's batch
+# ("/pickup_nearby": every wanted item within the server's 600, nearest first) - the drop
+# of a Metin lies round it and the old single pick took one item a turn, while the next
+# target pulled the hunter away.
+STONE_WAIT_SECONDS = 2.5
+STONE_WAIT_PICK_INTERVAL = 0.5
+STONE_WAIT_FIRST_PICK = 0.4
+STONE_WAIT_NEAR = 350
+STONE_WAIT_MIN_HP_PERCENT = 35
+# MT2009_PLUS_AUTOHUNT_MOUNT_TURN_V1 [Autor: Vekirion]: on a mount the character turns
+# towards the target in place before it rides - the space bar and A/D of a player - and
+# not in an arc on the move: a horse's arc near the target became a ride round it. A ride
+# whose distance to the target does not fall for MOUNT_ORBIT_SECONDS is an orbit: it stops,
+# turns and starts again.
+MOUNT_TURN_ZONE = 900
+MOUNT_TURN_ANGLE = 35.0
+MOUNT_TURN_SETTLE = 0.25
+MOUNT_ORBIT_SECONDS = 1.2
+MOUNT_ORBIT_PROGRESS = 30.0
 ANCHOR_LEASH = 600
 STUCK_SECONDS = 8.0
 # CHASE_SWITCH_MARGIN (Buby, 23 September) is gone: the target modes
@@ -436,6 +456,8 @@ DEFAULTS = [
     # MT2009_PLUS_AUTOHUNT_PRIORITY_V1 (Autor: blaki): a file without them
     # reads "Fokus" and no priority.
     ('target_mode', TARGET_MODE_FOCUS), ('priority_order', 0),
+    # MT2009_PLUS_AUTOHUNT_STONE_LOOT_V1: wait for a Metin's drop, and pick up with Z.
+    ('stone_wait', 1), ('pickup_z', 1),
 ]
 for i in xrange(USE_ITEM_SLOTS):
     DEFAULTS.append(('item%d_vnum' % i, 0))
@@ -631,6 +653,27 @@ def FacingDegree(fromX, fromY, toX, toY):
     if fromX >= toX:
         degree = 360.0 - degree
     return degree
+
+def AngleGap(a, b):
+    """MT2009_PLUS_AUTOHUNT_MOUNT_TURN_V1: the smaller angle between two headings."""
+    return abs((a - b + 180.0) % 360.0 - 180.0)
+
+def IsStoneVid(vid):
+    """MT2009_PLUS_AUTOHUNT_STONE_LOOT_V1: whether the instance is a Metin stone - its
+    instance type where the client says it, else the race (8001-8999)."""
+    if not vid:
+        return False
+    try:
+        stoneType = getattr(chr, 'INSTANCE_TYPE_STONE', None)
+        if stoneType is not None and chr.GetInstanceType(vid) == stoneType:
+            return True
+    except Exception:
+        pass
+    try:
+        race = chr.GetVirtualNumber(vid)
+        return 8000 < race < 9000
+    except Exception:
+        return False
 
 def SetPassThroughPlayers(on):
     # MT2009_PLUS_AUTOHUNT_PASS_V1: while the hunt runs the character walks through
@@ -1180,6 +1223,13 @@ class Hunter(object):
 
     def ResetState(self):
         self.targetVid = 0
+        # MT2009_PLUS_AUTOHUNT_STONE_LOOT_V1
+        self.targetIsStone = False
+        self.stonePos = None
+        self.stoneWaitUntil = 0.0
+        self.stoneNextPick = 0.0
+        # MT2009_PLUS_AUTOHUNT_MOUNT_TURN_V1
+        self.ResetMountTurn()
         # MT2009_PLUS_AUTOHUNT_PRIORITY_V1 (Autor: blaki)
         self.targetLastHP = None
         self.focusLastProgress = 0.0
@@ -1590,6 +1640,9 @@ class Hunter(object):
                 self.ResetChaseMovement()
             self.blockedWaiting = False
             self.targetVid = new_vid
+            self.targetIsStone = IsStoneVid(new_vid)	# MT2009_PLUS_AUTOHUNT_STONE_LOOT_V1
+            self.stonePos = None
+            self.ResetMountTurn()	# MT2009_PLUS_AUTOHUNT_MOUNT_TURN_V1
             self.targetLastHP = None
             self.focusLastProgress = now
             self.forceNearestUntil = 0.0
@@ -2584,6 +2637,9 @@ class Hunter(object):
         return True
 
     def Chase(self, now):
+        # MT2009_PLUS_AUTOHUNT_STONE_LOOT_V1: by a fallen Metin first.
+        if self.StoneWait(now):
+            return
         self.PickNearLoot(now)
         if self.lootSweeping:
             self.returning = False
@@ -2603,11 +2659,20 @@ class Hunter(object):
         else:
             self.targetVid = 0
         vid = self.targetVid
+        # MT2009_PLUS_AUTOHUNT_STONE_LOOT_V1: where the Metin stands, for the wait after it.
+        if vid and self.targetIsStone:
+            try:
+                (sx, sy, sz) = chr.GetPixelPosition(vid)
+                if sx or sy:
+                    self.stonePos = (sx, sy)
+            except Exception:
+                pass
         if vid and self.IsKnownDead(vid):
             if self.attacking:
                 self.ReleaseAttack()
             if player.GetTargetVID() != 0:
                 player.ClearTarget()
+            self.BeginStoneWait(now)	# MT2009_PLUS_AUTOHUNT_STONE_LOOT_V1
                 
             self.skipVid = vid
             self.skipUntil = now + 5.0
@@ -2640,6 +2705,8 @@ class Hunter(object):
                 return
             self.targetMissFrames = 0
             self.targetSetSince = 0.0
+            if vid:
+                self.BeginStoneWait(now)	# MT2009_PLUS_AUTOHUNT_STONE_LOOT_V1
             self.targetVid = 0
             if self.pathPurpose == 'target':
                 self.ResetPath()
@@ -2697,6 +2764,9 @@ class Hunter(object):
                 # Back to the start only when "Wracaj" asks for it.
                 if self.config.get('return', 0):
                     self.ReturnToAnchor(now)
+                return
+            # MT2009_PLUS_AUTOHUNT_MOUNT_TURN_V1: on a mount, turned to it first.
+            if IsMounted() and self.MountTurnFirst(now, vid, distance):
                 return
             if now >= self.nextMove and now >= self.skillHoldUntil:
                 self.nextMove = now + MOVE_INTERVAL
@@ -2920,11 +2990,97 @@ class Hunter(object):
             self.lootSince = 0.0
             return False
         self.nextLootPick = now + LOOT_PICK_INTERVAL
-        net.SendItemPickUpPacket(vid)
+        # MT2009_PLUS_AUTOHUNT_STONE_LOOT_V1: "Z" - the Z key's batch, every wanted item round
+        # the character at once; off, the one item named, as before.
+        if self.config.get('pickup_z', 1) and LootMask(self.config):
+            self.Command('/pickup_nearby %d' % LootMask(self.config), now)
+        else:
+            net.SendItemPickUpPacket(vid)
         self.lootVid = 0
         self.lootSince = 0.0
         self.nextLootRequest = min(self.nextLootRequest, now + 0.3)
         return True
+
+    # MT2009_PLUS_AUTOHUNT_STONE_LOOT_V1 -----------------------------------
+    def BeginStoneWait(self, now):
+        """A Metin target fell (or left the map): the wait for its drop starts, when the
+        window asks for it and the pick-up is on."""
+        if not self.targetIsStone:
+            return
+        self.targetIsStone = False
+        if not self.config.get('stone_wait', 1) or not self.config.get('pickup', 1) or not LootMask(self.config):
+            return
+        self.stoneWaitUntil = now + STONE_WAIT_SECONDS
+        self.stoneNextPick = now + STONE_WAIT_FIRST_PICK
+
+    def StoneWait(self, now):
+        """True while the hunter stays by the fallen Metin: no new target, a step to where
+        it stood when the drop is beyond the pick-up's reach, and the Z batch (or the one
+        item named) every STONE_WAIT_PICK_INTERVAL. Low health ends it."""
+        if not self.stoneWaitUntil:
+            return False
+        maxHP = player.GetStatus(player.MAX_HP)
+        if now >= self.stoneWaitUntil or (maxHP > 0 and
+                player.GetStatus(player.HP) * 100 < maxHP * STONE_WAIT_MIN_HP_PERCENT):
+            self.stoneWaitUntil = 0.0
+            self.stonePos = None
+            self.nextRequest = 0
+            return False
+        self.ReleaseAttack()
+        if self.stonePos is not None:
+            (px, py, pz) = player.GetMainCharacterPosition()
+            (sx, sy) = self.stonePos
+            if (px - sx) ** 2 + (py - sy) ** 2 > STONE_WAIT_NEAR ** 2 and now >= self.nextMove:
+                self.nextMove = now + MOVE_INTERVAL
+                (gx, gy) = StopPoint(px, py, sx, sy, STONE_WAIT_NEAR * 0.5)
+                self.WalkTo(gx, gy)
+        if now >= self.stoneNextPick and self.CommandGapOk(now):
+            self.stoneNextPick = now + STONE_WAIT_PICK_INTERVAL
+            mask = LootMask(self.config)
+            if mask and self.config.get('pickup_z', 1):
+                self.Command('/pickup_nearby %d' % mask, now)
+            else:
+                self.AskForLoot(now)
+                self.PickNearLoot(now)
+        return True
+
+    # MT2009_PLUS_AUTOHUNT_MOUNT_TURN_V1 ------------------------------------
+    def ResetMountTurn(self):
+        self.mountTurnVid = 0
+        self.mountHeading = 0.0
+        self.mountTurnUntil = 0.0
+        self.mountOrbitBest = 0.0
+        self.mountOrbitSince = 0.0
+
+    def MountTurnFirst(self, now, vid, distance):
+        """On a mount near the target: turned to it in place before the ride (True while
+        it turns), and an orbit broken. Far away, or straight on, the ride goes as it was."""
+        if distance > MOUNT_TURN_ZONE or now < self.skillHoldUntil:
+            self.mountOrbitSince = 0.0
+            return False
+        if now < self.mountTurnUntil:
+            return True
+        (px, py, pz) = player.GetMainCharacterPosition()
+        (tx, ty, tz) = chr.GetPixelPosition(vid)
+        heading = FacingDegree(px, py, tx, ty)
+        if self.mountTurnVid != vid or AngleGap(heading, self.mountHeading) > MOUNT_TURN_ANGLE:
+            self.WalkTo(px, py)
+            self.Face(vid)
+            self.mountTurnVid = vid
+            self.mountHeading = heading
+            self.mountTurnUntil = now + MOUNT_TURN_SETTLE
+            self.mountOrbitBest = distance
+            self.mountOrbitSince = now
+            self.nextMove = 0.0
+            return True
+        if not self.mountOrbitSince or distance < self.mountOrbitBest - MOUNT_ORBIT_PROGRESS:
+            self.mountOrbitBest = distance
+            self.mountOrbitSince = now
+        elif now - self.mountOrbitSince > MOUNT_ORBIT_SECONDS:
+            # round it, not nearer: the next frame stops and turns again
+            self.mountTurnVid = 0
+            self.mountOrbitSince = 0.0
+        return False
 
     def GoForLoot(self, now):
         if not self.lootVid:
@@ -4647,13 +4803,15 @@ class AutoHuntWindow(ui.BoardWithTitleBar):
 # pick-up filter's (uipickupfilter.CycleBonusMin).
 LOOT_ROWS = (len(LOOT_KINDS) + 2 + 2) // 3   # the kinds, "Filtr" and "Min. bonusow", three a row
 LOOT_PICKUP_ROW_H = 22
+# MT2009_PLUS_AUTOHUNT_STONE_LOOT_V1: "Po metinie: czekaj / Z" - a row under the kinds.
+LOOT_STONE_ROW_H = 24
 
 
 class AutoHuntLootWindow(ui.BoardWithTitleBar):
     WIDTH = 300
     # MT2009_PLUS_AUTOHUNT_PRIORITY_V1: 88 more for the target's mode and
     # the priority.
-    HEIGHT = 267 + LOOT_ROWS * 22 + LOOT_PICKUP_ROW_H
+    HEIGHT = 267 + LOOT_ROWS * 22 + LOOT_PICKUP_ROW_H + LOOT_STONE_ROW_H
 
     def __init__(self, hunter):
         ui.BoardWithTitleBar.__init__(self)
@@ -4680,7 +4838,7 @@ class AutoHuntLootWindow(ui.BoardWithTitleBar):
         y = 32
 
         pd_btn_start = 24 + LOOT_PICKUP_ROW_H
-        pd_h = pd_btn_start + LOOT_ROWS * 22 + 8
+        pd_h = pd_btn_start + LOOT_ROWS * 22 + 8 + LOOT_STONE_ROW_H
         pdBoard = self._Board(BL, y, BW, pd_h)
         self._Label(pdBoard, 14, 4, T('Podnoszenie (filtr jak pod Ctrl+Z)', 'Pick-up (the Ctrl+Z filter)'))
 
@@ -4701,6 +4859,11 @@ class AutoHuntLootWindow(ui.BoardWithTitleBar):
         pos += 1
         self.bonusMinBtn = self._Btn(pdBoard, 'large', 4 + (pos % 3) * 92, pdy + (pos // 3) * 22,
             '', self.OnCycleBonusMin)
+        # MT2009_PLUS_AUTOHUNT_STONE_LOOT_V1: "Metin: czekaj" and "Z: obszar", saved at once.
+        stoneY = pdy + LOOT_ROWS * 22 + 2
+        self._Label(pdBoard, 14, stoneY + 3, T('Drop:', 'Drop:'))
+        self._FlagBtn(pdBoard, 4 + 1 * 92, stoneY, T('Metin', 'Metin'), 'stone_wait')
+        self._FlagBtn(pdBoard, 4 + 2 * 92, stoneY, T('Z', 'Z key'), 'pickup_z')
 
         y += pd_h + 5
 
@@ -4851,6 +5014,15 @@ class AutoHuntLootWindow(ui.BoardWithTitleBar):
         if self.hunter.mainWindow:
             self.hunter.mainWindow.ReadEdits()
         self.hunter.config[key] = 0 if self.hunter.config[key] else 1
+        # MT2009_PLUS_AUTOHUNT_STONE_LOOT_V1: the drop's two switches kept for the character at once.
+        if key in ('stone_wait', 'pickup_z'):
+            self.hunter.SaveKeys((key,))
+            if key == 'stone_wait':
+                chat.AppendChat(chat.CHAT_TYPE_INFO, T('Auto \xa3owy: czekanie na drop z metina %s.',
+                    'Auto Hunt: waiting for a Metin\'s drop %s.') % OnOff(self.hunter.config[key]).lower())
+            else:
+                chat.AppendChat(chat.CHAT_TYPE_INFO, T('Auto \xa3owy: zbieranie klawiszem Z (obszarowo) %s.',
+                    'Auto Hunt: Z-key area pick-up %s.') % OnOff(self.hunter.config[key]).lower())
         self.Refresh()
 
     # MT2009_PLUS_AUTOHUNT_PRIORITY_V1 (Autor: blaki): saved for the

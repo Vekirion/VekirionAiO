@@ -390,6 +390,12 @@ namespace { bool HandlePlayerBotConversationWith(DWORD playerPID, const char* pl
 // - Zaklety Las, the loot runs on the 90-level maps - last,
 // after the temple, the dungeon runs and everything they borrow.
 #include "playerbot_yohara_bots.h"
+// MT2009_PLUS_BOT_REBALANCE_V1 (include): the rebalance of 28 October - the
+// crafting errand (Rada Pustelnika, Zwoj Egzorcyzmu, Zwoj Wojny from any NPC's
+// crafting window, else the market, else nothing), the mains' locks, the
+// deaths on a ground and the counters' edit cap. Last, after everything it
+// borrows.
+#include "playerbot_rebalance.h"
 
 namespace
 {
@@ -805,6 +811,11 @@ namespace
 		if (!sidekick && !cohort && !IsPlayerBotDropper(state.bPersonality) &&
 				GetPlayerBotFarmerSpotLock(ch->GetPlayerID()) != 0)
 			lockLevel = GetPlayerBotFarmerSpotLock(ch->GetPlayerID());
+		// MT2009_PLUS_BOT_REBALANCE_V1 (A1, A2): a main is never held under its
+		// farmer, and a Grinder's lock is a break, not a home: held at it for
+		// days it moves on (AdjustPlayerBotRebalanceLock, playerbot_rebalance.h).
+		if (!sidekick && !cohort && !IsPlayerBotDropper(state.bPersonality) && lockLevel != 0)
+			lockLevel = (BYTE)std::min(255, AdjustPlayerBotRebalanceLock(ch, (int)lockLevel, persona, false));
 #if defined(PLAYERBOT_ENGINE_MT2009)
 		// The owner's Anti-Exp Ring holds its companion too (upstream 2.2.39):
 		// with the ring on, the companion took its share of every kill in the
@@ -891,6 +902,9 @@ namespace
 		if (!sidekick && !cohort && !IsPlayerBotDropper(state.bPersonality) &&
 				GetPlayerBotFarmerSpotLock(ch->GetPlayerID()) != 0)
 			lockLevel = GetPlayerBotFarmerSpotLock(ch->GetPlayerID());
+		// MT2009_PLUS_BOT_REBALANCE_V1 (A1, A2): the same, read only.
+		if (!sidekick && !cohort && !IsPlayerBotDropper(state.bPersonality) && lockLevel != 0)
+			lockLevel = (BYTE)std::min(255, AdjustPlayerBotRebalanceLock(ch, (int)lockLevel, persona, true));
 		return lockLevel > ch->GetLevel() ? (unsigned int)lockLevel : 0U;
 	}
 
@@ -5469,6 +5483,14 @@ void CPlayerBotManager::ManageLifeSchedule(DWORD dwNow)
 	}
 
 	std::vector<DWORD> leaving;
+	// MT2009_PLUS_BOT_REBALANCE_V1 (C2): the rotation (event flag m2_bot_rotation,
+	// under LIFE_HOURS): about a thousand places and 4 500 identities, of which
+	// 2 331 had never played on 28 October. A bot whose session ends rests and
+	// leaves the cohort; the identity of its kingdom that has rested longest -
+	// one that never played first - takes its place, and the rested one waits
+	// on the bench for a place to come free. The world keeps its number.
+	const bool rotation = byHours && quest::CQuestManager::instance().GetEventFlag("m2_bot_rotation") != 0;
+	unsigned int rotatedIn = 0;
 	// No more than PLAYERBOT_LIFE_MAX_RESTING_PERCENT of the cohort rests at
 	// once; a session that ends past that goes on a little longer. Without the
 	// cap the schedule did exactly what it said and a world emptied: every bot
@@ -5548,7 +5570,12 @@ void CPlayerBotManager::ManageLifeSchedule(DWORD dwNow)
 			session->second = dwNow + PLAYERBOT_LIFE_POSTPONE_MS;
 			continue;
 		}
-		if (m_mapLifeRestEnd.size() + leaving.size() >= maxResting)
+		// MT2009_PLUS_BOT_REBALANCE_V1 (C2): under the rotation a bot that goes to
+		// rest hands its place to a benched identity (below), so the world does
+		// not empty and the cap has nothing to hold - except for the operator's
+		// medal droppers, who are not rotated.
+		const bool rotates = rotation && m_setMedalDropperCohort.count(pid) == 0;
+		if (!rotates && m_mapLifeRestEnd.size() + leaving.size() >= maxResting)
 		{
 			// The resting are at the cap: this one plays on until somebody
 			// comes back, and asks again after a while drawn by pid so the
@@ -5578,12 +5605,54 @@ void CPlayerBotManager::ManageLifeSchedule(DWORD dwNow)
 		if (bot != m_mapBots.end() && bot->second && bot->second->GetCharacter())
 			strlcpy(szName, bot->second->GetCharacter()->GetName(), sizeof(szName));
 		m_mapLifeSessionEnd.erase(pid);
+		// MT2009_PLUS_BOT_REBALANCE_V1 (C2): its kingdom, read before it leaves.
+		const BYTE leavingEmpire = rotation ? GetRegisteredEmpire(pid) : 0;
 		// MT2009_PLUS_BOT_SESSIONS_V1: the session row says until when.
 		if (!Despawn(pid, playerbot_session_rules::OUT_REST, (rest + 999U) / 1000U))
 			continue;
 		m_mapLifeRestEnd[pid] = dwNow + rest;
 		sys_log(0, "PLAYERBOT_LIFE: logged out pid=%u name=%s rest=%umin",
 				pid, szName, (unsigned int)(rest / 60000U));
+		// MT2009_PLUS_BOT_REBALANCE_V1 (C2): its place to a benched identity of
+		// the same kingdom; the rested one leaves the cohort, so the top-up
+		// does not bring it back over the number.
+		if (rotation && leavingEmpire != 0 && m_setMedalDropperCohort.count(pid) == 0)
+		{
+			DWORD sub = 0;
+			long subSince = LONG_MAX;
+			const long nowSec = (long)get_global_time();
+			for (TRegisteredPlayerBotSet::const_iterator r = m_setRegisteredBots.begin(); r != m_setRegisteredBots.end(); ++r)
+			{
+				const DWORD cand = *r;
+				if (cand == pid || GetRegisteredEmpire(cand) != leavingEmpire ||
+						m_setScheduledBots.find(cand) != m_setScheduledBots.end() ||
+						m_setBannedBots.find(cand) != m_setBannedBots.end() || IsRestingBot(cand) ||
+						IsPlayerBotShouterPID(cand) || IsPlayerBotMedalShouterPID(cand) || IsPlayerBotSidekickPID(cand) ||
+						IsPlayerBotRetirementHold(cand) || IsPlayerBotTakeoverHold(cand) ||
+						CHARACTER_MANAGER::instance().FindByPID(cand) != NULL)
+					continue;
+				// The longest off first: when it last left the cohort, a never
+				// played identity counting as the oldest of all.
+				std::map<DWORD, long>::const_iterator off = s_mapPlayerBotRotationBenchedAt.find(cand);
+				const long since = off == s_mapPlayerBotRotationBenchedAt.end() ? 0 : off->second;
+				if (since < subSince)
+				{
+					subSince = since;
+					sub = cand;
+				}
+			}
+			if (sub != 0)
+			{
+				m_setScheduledBots.erase(pid);
+				s_mapPlayerBotRotationBenchedAt[pid] = nowSec;
+				m_setScheduledBots.insert(sub);
+				m_dequePendingSpawns.push_back(sub);
+				m_dwNextSpawnBatchTime = 0;
+				++rotatedIn;
+				sys_log(0, "PLAYERBOT_LIFE: rotation out=%u in=%u empire=%u benched_since=%ld",
+						pid, sub, (unsigned int)leavingEmpire, subSince);
+			}
+		}
 	}
 	// Whose rest is over: off the resting list, and the top-up on the next
 	// tick brings them back the way it brings anybody back.
@@ -5615,10 +5684,10 @@ void CPlayerBotManager::ManageLifeSchedule(DWORD dwNow)
 	if (m_dwNextLifeCensusTime == 0 || dwNow >= m_dwNextLifeCensusTime)
 	{
 		m_dwNextLifeCensusTime = dwNow + PLAYERBOT_LIFE_CENSUS_INTERVAL;
-		sys_log(0, "PLAYERBOT_LIFE: census online=%u resting=%u returning=%u left_now=%u back_now=%u held_on=%u cap=%u hours=%d",
+		sys_log(0, "PLAYERBOT_LIFE: census online=%u resting=%u returning=%u left_now=%u back_now=%u held_on=%u cap=%u hours=%d rotation=%d rotated_in=%u",
 				(unsigned int)m_mapBots.size(), (unsigned int)m_mapLifeRestEnd.size(),
 				(unsigned int)m_setLifeReturning.size(), (unsigned int)leaving.size(), back,
-				heldOn, (unsigned int)maxResting, lifeHours);
+				heldOn, (unsigned int)maxResting, lifeHours, rotation ? 1 : 0, rotatedIn);
 	}
 }
 
@@ -7093,6 +7162,10 @@ WritePlayerBotGuildStatus(dwNow);
 			continue;
 		}
 
+		// MT2009_PLUS_BOT_REBALANCE_V1: the deaths on a ground, counted on the
+		// tick a bot falls (playerbot_rebalance.h), before the death pass below.
+		if (d->IsPhase(PHASE_GAME))
+			NotePlayerBotRebalanceLife(ch, dwNow);
 		// Retirement (playerbot_retirement.h): never despawns from inside this loop.
 		// Lethal Stun precedes IsDead(). Hold it before errands, alchemy or
 		// status updates can treat a zero-HP character as alive.
@@ -7953,6 +8026,14 @@ WritePlayerBotGuildStatus(dwNow);
 		// reason.
 		if (!bBagFirst && !bServingPerson && !state.bMultiPullActive && !bFightingMetin &&
 				ManagePlayerBotWorkshop(ch, state, dwNow))
+			continue;
+
+		// MT2009_PLUS_BOT_REBALANCE_V1 (A3, B1): the crafting errand - a Rada
+		// Pustelnika, a Zwoj Egzorcyzmu or a Zwoj Wojny from whichever NPC's
+		// crafting window makes one (playerbot_rebalance.h). Beside the
+		// workshop and for its reason.
+		if (!bBagFirst && !bServingPerson && !state.bMultiPullActive && !bFightingMetin &&
+				ManagePlayerBotCraftErrand(ch, state, dwNow))
 			continue;
 
 		// The Dozorca's exchange and the Stajenny's saddlebag rows

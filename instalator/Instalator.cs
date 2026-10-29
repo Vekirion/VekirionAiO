@@ -49,6 +49,7 @@ namespace MT2009
 			new Mod("20", false, true, "Kupowanie ze stosow (boty kupia czesc stosu taniej)"),
 			new Mod("21", false, true, "Wieza Demonow: wyjscie po 15 min / u Straznika, szybsze pieczecie"),
 			new Mod("22", false, true, "Panel: drop - zmiana masowa + ksiega z metinow"),
+			new Mod("23", false, true, "Rebalans botow (blokady, zwoje, bonusy, alchemia, ceny...)"),
 		};
 
 		// wersja klienta, na ktora jest ta paczka (CLIENT_VERSION)
@@ -57,14 +58,14 @@ namespace MT2009
 		static readonly uint[] IndexKey = new uint[] { 533489241, 64592187, 413438084, 181131063 };
 
 		// klient\pack z paczki (sprawdzenie, czy wszystkie czesci zip sa rozpakowane)
-		const string PkgRootData = "4943D952B28B612BD7FE1F776230B39D";
+		const string PkgRootData = "E09DD68C29E9352ED7B2C6BAEBB522B5";
 		const string PkgEtcData = "BA9319906DA1F1EED275A6315FBFEAD4";
 		const string PkgGdIndex = "70B23A9B350E2719CB3D50E4C0C35A4D";
 		const string PkgGdData = "ED5F7419B5740DF83DD2D7D544F79B69";
 		// root.index, nad ktorym wolno pracowac bez pytania: czysty 2.0.70 i ta paczka (2.0.70, wszystkie mody).
 		// Inny zestaw modow z tej paczki rozpoznaje po root= w mt2009_mody.txt.
 		static readonly string[] KnownRoot = new string[] {
-			"E82FB838C2BBC4B825FB67C201F58B3B", "201F308BA2EE0DA99D23304E51A6DC75",
+			"E82FB838C2BBC4B825FB67C201F58B3B", "0BB8B7C3E95E62D6A9E23A8A3D31DCFD", "201F308BA2EE0DA99D23304E51A6DC75",
 			"C84596D4DCDED2C1B9C3F9E24D3A20BB" };
 		// etc.index: czysty (2.0.66-2.0.70 maja ten sam etc), z poprawka mgly, z mgla i znacznikiem
 		static readonly string[] KnownEtc = new string[] {
@@ -755,6 +756,11 @@ namespace MT2009
 				Warn("14 (towarzysz): przed pierwszym startem zrob kopie tabel towarzysza:");
 				Console.WriteLine("  mysqldump player playerbot_sidekick playerbot_sidekick_gift playerbot_sidekick_pin > sidekick_backup.sql");
 				Console.WriteLine("  Migracja bazy robi sie sama przy starcie. Limity w docker\\.env: M2_SIDEKICK_MAX_ACTIVE=2, M2_SIDEKICK_ROSTER=4.");
+			}
+			if (sel.Contains("23"))
+			{
+				Console.WriteLine();
+				Info("23 (rebalans botow): flagi i opis w serwer\\rebalans\\README_PL.md w paczce (reb_lock_break_days, m2_bot_craft_errand_off, m2_bot_rotation).");
 			}
 			if (sel.Contains("22"))
 			{
